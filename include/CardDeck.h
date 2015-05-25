@@ -2,6 +2,7 @@
 #define CARDDECK_H
 
 #include <vector>
+#include <string>
 
 enum Suit{ HEART, CLUB, SPADE, DIAMOND };
 enum Type{ TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE, TEN, JACK, QUEEN, KING, ACE };
@@ -10,6 +11,13 @@ struct Card {
   Suit suit; //the suit of the card
   Type type; //The type of the card
 };
+
+static const char* type_translated_to_text[] = {"two","three","four","five","six","seven","eight","nine","ten","jack","queen","king","ace"};
+static const char* suit_translated_to_text[] = {"heart","club","spade","diamond"};
+
+std::string cardToString( const Card &c );
+
+
 
 class CardDeck {
  public:
