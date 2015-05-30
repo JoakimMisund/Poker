@@ -3,20 +3,21 @@ CFLAGS = -g -c -Wall -std=c++1y -pedantic
 LDFLAGS = -lm -std=c++1y -pedantic
 
 SRCDIR = src
-BUILDDIR = build
-TARGET = bin/runner
 
-SRCEXT = cpp
+ODIR = bin
+LDIR = lib
+IDIR = include
+
+#TODO: Do this automatically
+DEPS = include/CardDeck.h include/Table.h
+OBJ = bin/CardDeck.o bin/Table.o bin/main.o
+
 SOURCES = $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
-OBJECTS = $(pathsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.o))
 
-LIB =
-INC = -I include
+$(ODIR)/%.o : src/%.cpp $(DEPS)
+	$(CC) $(CFLAGS) -o $@ $<
 
-$(TARGET) : $(OBJECTS)/%.o
-	$(CC) $(LDFLAGS) $(SOURCES) -o bin/runner
-
-$(OBJECTS)/%.o: $(SOURCES)
-	$(CC) $(CFLAGS) $(SOURCES)
+bin/runner: $(OBJ)
+	$(CC) -o $@ $^ $(LDFLAGS)
 
 .PHONY: clean
