@@ -1,5 +1,6 @@
 CC = g++
-CFLAGS = -g -Wall
+CFLAGS = -g -c -Wall -std=c++1y -pedantic
+LDFLAGS = -lm -std=c++1y -pedantic
 
 SRCDIR = src
 BUILDDIR = build
@@ -12,18 +13,10 @@ OBJECTS = $(pathsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.o))
 LIB =
 INC = -I include
 
-$(TARGET): $(OBJECTS)
-	@echo "Linking"
-	@echo " $(CC) $^ -o $(TARGET) $(LIB)"; $(CC) $^ -o $(TARGET) $(LIB)
+$(TARGET) : $(OBJECTS)/%.o
+	$(CC) $(LDFLAGS) $(SOURCES) -o bin/runner
 
-$(BUILDDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
-	@mkdir -p $(dir $@)
-	@echo " $(CC) $(CFLAGS) $(INC) -c -o $@ $<"; $(CC) $(CFLAGS) $(INC) -c -o $@ $<
-
-clean:
-	@echo " $(RM) -r $(BUILDDIR) $(TARGET)"; $(RM) -r $(BUILDDIR) $(TARGET)
-
-tester:
-	$(CC) $(CFLAGS) test/tester.cpp $(INC) $(LIB) -o bin/tester
+$(OBJECTS)/%.o: $(SOURCES)
+	$(CC) $(CFLAGS) $(SOURCES)
 
 .PHONY: clean

@@ -12,9 +12,6 @@ struct Card {
   Type type; //The type of the card
 };
 
-static const char* type_translated_to_text[] = {"two","three","four","five","six","seven","eight","nine","ten","jack","queen","king","ace"};
-static const char* suit_translated_to_text[] = {"heart","club","spade","diamond"};
-
 std::string cardToString( const Card &c );
 
 
@@ -29,7 +26,7 @@ class CardDeck {
   void resetDeck();
  private:
   std::vector<Card> deck;
-  int nextCardIndex;
+  unsigned int nextCardIndex;
   int seed; //Default is 0, but it can be specified by caller.
   void shuffleDeck();
   void initializeDeck();

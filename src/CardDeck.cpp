@@ -1,28 +1,11 @@
 #include "../include/CardDeck.h"
 #include <cstdlib>
-/*class CardDeck {
-  public:
-  CardDeck();
-  CardDeck( int seed );
-  Card getNextCard();
-  bool isEmpty();
-  int size();
-  void resetDeck();
-  private:
-  std::vector<Card> deck;
-  int seed; //Default is 0, but it can be specified by caller.
-  void shuffleDeck();
-  void initializeDeck();
-  int getRandomValue();
-  void swap( int index1, int index2 ); //TODO: Make this a template method
-  };*/
 
-
-CardDeck::CardDeck():seed{0},deck{52},nextCardIndex{0}
+CardDeck::CardDeck():deck{52},nextCardIndex{0},seed{0}
 {
   resetDeck();
 }
-CardDeck::CardDeck(int seed):seed{seed*3},deck{52},nextCardIndex{0}
+CardDeck::CardDeck(int seed):deck{52},nextCardIndex{0},seed{seed}
 {
   resetDeck();
 }
@@ -51,11 +34,12 @@ void CardDeck::resetDeck()
 void CardDeck::shuffleDeck()
 {
   srand( seed );
-  for( int i = 0; i < 50; ++i ) { //Do 50 times
-    for( int j = 0; j < deck.size(); ++j ) { //Go through all cards
+  for( unsigned int i = 0; i < 50; ++i ) { //Do 50 times
+    for( unsigned int j = 0; j < deck.size(); ++j ) { //Go through all cards
       swap(j, getRandomValue());
     }
   }
+  seed = seed * 13;
 }
 
 int CardDeck::getRandomValue()
@@ -72,7 +56,8 @@ void CardDeck::swap( int index1, int index2 )
 
 void CardDeck::initializeDeck()
 {
-  int deckIndex = 0;
+  unsigned int deckIndex = 0;
+  nextCardIndex = 0;
 
   while( deckIndex < deck.size() ) {
 
@@ -81,6 +66,9 @@ void CardDeck::initializeDeck()
     deck[deckIndex++] = Card{s,t};
   }
 }
+
+static const char* type_translated_to_text[] = {"two","three","four","five","six","seven","eight","nine","ten","jack","queen","king","ace"};
+static const char* suit_translated_to_text[] = {"heart","club","spade","diamond"};
 
 std::string cardToString( const Card &c )
 {
