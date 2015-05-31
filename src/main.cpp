@@ -41,6 +41,7 @@ void runTable( Table &t )
 {
   CardDeck deck(time(NULL));
   int rounds = 4;
+  unsigned short dealerPosition = 0;
   while(rounds-- > 0) {
 
     deck.resetDeck();
@@ -56,20 +57,67 @@ void runTable( Table &t )
 	cardToString(player.getFirstCard()) << " " << cardToString(player.getSecondCard()) << "\n";
     }
 
-    int numCardsOnBoard = t.getNumCards();
-    switch( numCardsOnBoard ) {
-    case 0: //pre flopp
-    case 3: //flopp
-    case 4: //turn
-    case 5: //river
-    default: ;//defuq
-    }
+    Player *smallBlind = f.findSmallBlind( dealerPosition );
+    Player *bigBlind = findBigBlind( dealerPosition );
 
+
+    while(1) { //run hand
+      unsigned int bets[MAX_NR_PLAYERS]{0};
+      bool folded[MAX_NR_PLAYERS]{false};
+      
+      Player *playerToAct = nullptr;
+      Player *lastInRound = nullptr;
+      //have to find next player to act
+      if( t.getNumCards() == 0 ) { //flopp
+	//collect blinds
+	bets[smallBlind.getTablePosition()] = 50;
+	bets[bigBlind.getTablePosition()] = 100;
+	smallBlind.reduceStackSize( 50 );
+	bigBlind.reduceStackSize( 100 );
+	//done collecting blinds
+	playerToAct = t.getPlayerAfter( bigBlind );
+	lastInRound = bigBlind;
+      } else {
+	playerToAct = t.getPlayerAfter( bigBlind );
+	lastInRound = bigBlind;
+      }
+
+      Action actionToMatch{ActionType::CHECK,0};
+      while( playerToAct != lastInRound ) { //If the next player to act is the last in the round, the round is over
+	
+	Action a = playerToAct->promptForAction( actionToMatch );
+	//check if valid action
+
+	if( a.action == ActionType::BET ||
+	    a.action == ActionType::RAISE ) { //new lastInRound
+	  lastInRound = playerToAct;
+	  bets[playerToAct->getTablePosition()] += a.amount;
+	  actionToMatch.action = a.action;
+	  actionToMatch.amount = bets[playerToAct->getTablePosition()];
+	} else if ( a.action == ActionType::FOLD ) {
+	  folded[playerToAct->getTablePosition] = true;
+	} else {
+	  bets[playerToAct->getTablePosition()] += actionToMatch.amount;
+	}
+	
+	std::cout << "player " << playerToAct->getTablePosition() << ": " << a.action << " " << a.amount << "\n";
+	
+	playerToAct = t.getPlayerAfter( playerToAct );
+      }
+      
+      if( t.getNumCards() == 0 ) {
+	t.addCardToBoard();
+      }
+
+      //Find winner
+    }    
     std::cout << "\n";
   } 
 }
 
 
-
-
+void incrementTablePosition( unsigned int &index, int nr )
+{
+  index = (index + nr) % MAX_NR_PLAYERS;
+}
 
