@@ -1,6 +1,7 @@
 #include "../include/Table.h"
 #include <ctime>
 #include <iostream>
+#include <algorithm>
 
 /*class Table {
   static int nextTableId;
@@ -49,7 +50,41 @@ bool Table::registerUser( User *user, unsigned int tablePosition )
   Player newPlayer( user, 15000, tablePosition );
   players.push_back(newPlayer);
 
+  std::sort( begin(players), end(players), [](Player p1, Player p2) {
+      return p1.getTablePosition() < p2.getTablePosition();
+    });
+
   return true;
+}
+
+Player* Table::getPlayerAfter( Player *p )
+{
+  if( p == nullptr ) {
+    return nullptr;
+  }
+
+  unsigned int tablePosition = p->getTablePosition();
+  Player* after = &players[0];
+  for( auto &p : players ) {
+    if( p.getTablePosition() > tablePosition ) after = &p;
+  }
+  return after;
+}
+
+Player* Table::findSmallBlind( unsigned int dealerPosition )
+{
+  return getPlayerAfter( getPlayerAtPosition(dealerPosition) );
+}
+Player* Table::findBigBlind( unsigned int dealerPosition )
+{
+  return getPlayerAfter( getPlayerAfter( getPlayerAtPosition(dealerPosition) ) );
+}
+Player* Table::getPlayerAtPosition( unsigned int position )
+{
+  for( auto &p: players ) {
+    if( p.getTablePosition() == position) return &p;
+  }
+  return nullptr;
 }
 //  Player( User *user, unsigned int stackSize, unsigned int tablePosition );
 

@@ -25,7 +25,10 @@ public:
   void addCardToBoard( Card c );
   unsigned int getNumCards();
   bool registerUser( User *user, unsigned int tablePosition );
-
+  Player* getPlayerAfter( Player *p );
+  Player* findSmallBlind( unsigned int dealerPosition );
+  Player* findBigBlind( unsigned int dealerPosition );
+  Player* getPlayerAtPosition( unsigned int position );
 private:
   std::vector<Player> players;
   std::vector<Card> board;
@@ -64,7 +67,7 @@ class Player { //One instance of a user at a table.
   Card getFirstCard();
   Card getSecondCard();
 
-private:
+ private:
   unsigned int stackSize;
   User *user; //if nullptr, the player is a computer.
   Card cards[2];
