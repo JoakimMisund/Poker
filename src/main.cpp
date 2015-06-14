@@ -8,11 +8,58 @@
 
 class Table;
 
+enum handStrength{ HIGH_CARD = 0, PAIR = 1, TWO_PAIRS = 2, THREE_OF_A_KIND = 3, STRAIGHT = 4, FLUSH = 5, FULL_HOUSE = 6, FOUR_OF_A_KIND = 7, STRAIGHT_FLUSH = 8 };
+
 void runTable( Table &t );
 Player* findWinner( Table &t );
+/*
+enum Suit{ HEART, CLUB, SPADE, DIAMOND };
+enum Type{ TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE, TEN, JACK, QUEEN, KING, ACE };
+*/
+
+void print_hand( std::vector<Card> &hand )
+{
+
+  char* types[]{"two","three","four","five","six","seven","eight","nine","ten","jack","queen","king","ace"};
+  char* suits[]{"heart","club","spade","diamond"};
+  for( Card &c : hand ) {
+    std::cout << types[c.type] << " of " << suits[c.suit] << " ";
+  }
+  std::cout << "\n";
+}
+handStrength getHandStrength( std::vector<Card> &hand, Type &t1, Type &t2 );
+
+void test_getHandStrength()
+{
+  CardDeck deck(time(NULL));
+  char* strengths[]{"high card","pair","two pairs", "three of a kind", "straight", "flush", "full house", "four of a kind", "straight flush" };
+
+  //handStrength getHandStrength( std::vector<Card> &hand, Type &t1, Type &t2 )
+  std::vector<Card> hand;
+  
+  for( int i = 0; i < 1000; ++i ) { //run test 10 times
+    hand.clear();
+    deck.resetDeck();
+    for( int j = 0; j < 5; ++j ) { //get 5 random cards
+      Card c = deck.getNextCard();
+      hand.push_back(c);
+    }
+
+    print_hand(hand);
+    Type t1,t2;
+    handStrength strength = getHandStrength( hand, t1, t2);
+
+    std::cout << strengths[strength] << "\n";
+    if( strength == handStrength::FLUSH || strength == handStrength::STRAIGHT ) break;
+
+  }
+}
 
 int main( int argc, char *argv[] )
 {
+
+  test_getHandStrength();
+  return 1;
   CardDeck deck(time(NULL));
 
   std::map<std::string,int> seen_cards;
@@ -30,15 +77,16 @@ int main( int argc, char *argv[] )
   }
 
   //construct table
-  Table t;
+  /*  Table t;
   User user(15000);
   t.registerUser( &user, 0 );
   t.registerUser( nullptr, 1 );
   //run the table
   runTable(t);
-
+  */
   return 0;
 }
+
 
 void runTable( Table &t )
 {
@@ -147,8 +195,6 @@ void incrementTablePosition( unsigned int &index, int nr )
   index = (index + nr) % MAX_NR_PLAYERS;
 }
 
-enum handStrength{ HIGH_CARD = 0, PAIR = 1, TWO_PAIRS = 2, THREE_OF_A_KIND = 3, STRAIGHT = 4, FLUSH = 5, FULL_HOUSE = 6, FOUR_OF_A_KIND = 7, STRAIGHT_FLUSH = 8 };
-
 handStrength getHandStrength( std::vector<Card> &hand, Type &t1, Type &t2 )
 {
   std::sort( begin(hand), end(hand), []( Card c1, Card c2 ) {
@@ -161,21 +207,20 @@ handStrength getHandStrength( std::vector<Card> &hand, Type &t1, Type &t2 )
   Suit s = hand[0].suit;
   bool straight = true;
   bool flush = true;
+  std::cout << t << "\n";
 
   for( unsigned int i = 1; i < hand.size(); ++i ) { //check flush and straight
     Card curr = hand[i];
-
-    if( curr.type != t+1 && curr.suit != s ) { //no straight or flush
-      straight = flush = false;
-      break;
-    } else if( curr.type != t+1 || curr.suit != s ) { //Either not a straight or a flush
-
-      if( curr.type != t+1 ) { //not a straight
-	straight = false;
-      } else { //not a flush
-	flush = false;
-      }
+    std::cout << curr.type << "\n";
+ 
+    if( curr.type != t+1 ) { //not a straight
+      straight = false;
     }
+    if( curr.suit != s ) { //not a flush
+      flush = false;
+    }
+    t = curr.type;
+
 
     highCard = (highCard < curr.type) ? curr.type:highCard;
   }
@@ -188,18 +233,20 @@ handStrength getHandStrength( std::vector<Card> &hand, Type &t1, Type &t2 )
     return STRAIGHT;
   } else if( flush ) {
     t1 = highCard;
-    return STRAIGHT_FLUSH;
+    return FLUSH;
   }
 
   //find max of a kind
   unsigned short max = 0;
   t = Type::TWO;
-  for( unsigned int i = 0; i < hand.size(); ++i ) {
+  std::cout << "hand size: " << hand.size() << "\n";
+  for( unsigned int i = 0; i < hand.size(); ++i ) { //go through all cards
     Card c = hand[i];
-    unsigned short count = 0;
+    unsigned short count = 1; //how many do i have of this kind?
     for( unsigned int j = i+1; j < hand.size(); ++j ) {
       if( hand[j].type == c.type ) count++;
     }
+    std::cout << "Of this kind: " << count << "\n";
 
     if( count == 4 ) {
       t1 = c.type;
@@ -208,7 +255,7 @@ handStrength getHandStrength( std::vector<Card> &hand, Type &t1, Type &t2 )
       t1 = c.type;
       t2 = t;
       return FULL_HOUSE;
-    } else if( count == 2 && max == 3 ) {
+    } else if( count == 2 && max == 3 && t != c.type ) {
       t2 = c.type;
       t1 = t;
       return FULL_HOUSE;
