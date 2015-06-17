@@ -13,7 +13,7 @@ struct Card {
 };
 
 std::string cardToString( const Card &c );
-
+void printCard( const Card &c );
 
 
 class CardDeck {

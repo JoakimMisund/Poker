@@ -5,6 +5,7 @@
 #include <map>
 #include <vector>
 #include <algorithm>
+#include <cassert>
 
 class Table;
 
@@ -20,10 +21,16 @@ enum Type{ TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE, TEN, JACK, QUEEN, KI
 void print_hand( std::vector<Card> &hand )
 {
 
-  char* types[]{"two","three","four","five","six","seven","eight","nine","ten","jack","queen","king","ace"};
-  char* suits[]{"heart","club","spade","diamond"};
+  std::string types[]{"two","three","four","five","six","seven","eight","nine","ten","jack","queen","king","ace"};
+  std::string suits[]{"heart","club","spade","diamond"};
   for( Card &c : hand ) {
     std::cout << types[c.type] << " of " << suits[c.suit] << " ";
+  }
+
+  std::cout << "\n";
+  for( Card &c : hand ) {
+    printCard( c );
+    std::cout << " ";
   }
   std::cout << "\n";
 }
@@ -32,12 +39,12 @@ handStrength getHandStrength( std::vector<Card> &hand, Type &t1, Type &t2 );
 void test_getHandStrength()
 {
   CardDeck deck(time(NULL));
-  char* strengths[]{"high card","pair","two pairs", "three of a kind", "straight", "flush", "full house", "four of a kind", "straight flush" };
+  std::string strengths[]{"high card","pair","two pairs", "three of a kind", "straight", "flush", "full house", "four of a kind", "straight flush" };
 
   //handStrength getHandStrength( std::vector<Card> &hand, Type &t1, Type &t2 )
   std::vector<Card> hand;
   
-  for( int i = 0; i < 1000; ++i ) { //run test 10 times
+  for( int i = 0; i < 10; ++i ) { //run test 10 times
     hand.clear();
     deck.resetDeck();
     for( int j = 0; j < 5; ++j ) { //get 5 random cards
@@ -50,9 +57,15 @@ void test_getHandStrength()
     handStrength strength = getHandStrength( hand, t1, t2);
 
     std::cout << strengths[strength] << "\n";
-    if( strength == handStrength::FLUSH || strength == handStrength::STRAIGHT ) break;
+    if( strength == handStrength::STRAIGHT_FLUSH ) break;
 
   }
+}
+
+void test_findBestCombination() 
+{
+
+  
 }
 
 int main( int argc, char *argv[] )
@@ -195,11 +208,14 @@ void incrementTablePosition( unsigned int &index, int nr )
   index = (index + nr) % MAX_NR_PLAYERS;
 }
 
+//seems to be done
 handStrength getHandStrength( std::vector<Card> &hand, Type &t1, Type &t2 )
 {
   std::sort( begin(hand), end(hand), []( Card c1, Card c2 ) {
       return c1.type < c2.type;
     } );
+
+  t1 = t2 = Type::TWO; //added to make the callers job easier. Does not have to check what strength
 
   //check is straight or flush or both
   Type highCard = Type::TWO;
@@ -285,19 +301,69 @@ handStrength getHandStrength( std::vector<Card> &hand, Type &t1, Type &t2 )
   return HIGH_CARD;
 }
 
-bool compareHands( std::vector<Card> &hand1, std::vector<Card> &hand2 )
+//1 if hand1 is better than hand2, -1 if hand2 is better, equal => 0; 
+int compareHands( std::vector<Card> &hand1, std::vector<Card> &hand2 )
 {
-  Type h1t1;
-  Type h1t2;
+  Type h1t1, h2t1;
+  Type h1t2, h2t2;
   handStrength h1 = getHandStrength( hand1, h1t1, h1t2 );
+  handStrength h2 = getHandStrength( hand2, h2t1, h2t2 );
 
-  //  handStrength h2 = HIGH_CARD;
-  return 1;
+  if( h1 != h2 ) {
+    return (h1 > h2) ? 1:-1;
+  }
+  
+  //hands are equal..
+
+  if( h1t1 != h2t1 ) {
+    return (h1t1 > h2t1) ? 1:-1;
+  }
+  if( h1t2 != h2t2 ) {
+    return (h1t2 > h2t2) ? 1:-1;
+  }
+  
+  return 0;
+
+}
+
+//find best hand of 5 from 7 cards.
+std::vector<Card> findBestCombination( std::vector<Card> cards )
+{
+  assert( cards.size() == 7 );
+
+  std::vector<Card> currentHand;
+  std::vector<Card> bestHand;
+
+  //i is the index of a card to exclude
+  for( unsigned int i = 0; i < cards.size(); ++i ) {
+    //j is the index of a card to exclude.
+    for( unsigned int j = i+1; j < cards.size(); ++j ) {
+    
+      currentHand.clear();
+      //add cards
+      for( unsigned int k = 0; k < cards.size() && currentHand.size() != 5; ++k ) {
+	if( k != i && k != j ) {
+	  currentHand.push_back(cards[k]);
+	}
+      }
+
+      if( bestHand.size() == 0 ) {
+	bestHand = currentHand;
+      } else {
+	if( compareHands( currentHand, bestHand ) == 1 ) {
+	  bestHand = currentHand;
+	}
+      }
+      
+    }
+  }
+
+  return bestHand;
 
 }
 
 Player* findWinner( Table &t )
 {
-
+  //have to generate the best hand of all the players, then have an elimination tournament.
   return nullptr;
 }

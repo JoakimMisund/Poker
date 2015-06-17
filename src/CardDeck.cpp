@@ -1,5 +1,6 @@
 #include "../include/CardDeck.h"
 #include <cstdlib>
+#include <iostream>
 
 CardDeck::CardDeck():deck{52},nextCardIndex{0},seed{0}
 {
@@ -67,12 +68,35 @@ void CardDeck::initializeDeck()
   }
 }
 
-static const char* type_translated_to_text[] = {"two","three","four","five","six","seven","eight","nine","ten","jack","queen","king","ace"};
-static const char* suit_translated_to_text[] = {"heart","club","spade","diamond"};
+static const std::string type_translated_to_text[] = {"two","three","four","five","six","seven","eight","nine","ten","jack","queen","king","ace"};
+static const std::string suit_translated_to_text[] = {"heart","club","spade","diamond"};
+
+static const std::string type_translated_to_shorthand[] = {"2","3","4","5","6","7","8","9","10","J","Q","K","A"};
 
 std::string cardToString( const Card &c )
 {
   std::string type{type_translated_to_text[static_cast<int>(c.type)]};
   std::string suit{suit_translated_to_text[static_cast<int>(c.suit)]};
   return type + " of " + suit;;
+}
+
+void printCard( const Card &c )
+{
+  Type t = c.type;
+  Suit s = c.suit;
+  
+  std::cout << type_translated_to_shorthand[static_cast<int>(t)];
+  
+  switch(s) {
+  case Suit::HEART: std::cout << "\033[0;31m\u2665\033[0;0m";
+    break;
+  case Suit::CLUB: std::cout << "\033[0;30m\u2663\033[0;0m";
+      break;
+  case Suit::DIAMOND: std::cout << "\033[0;31m\u2666\033[0;0m";
+    break;
+  case Suit::SPADE: std::cout << "\033[0;30m\u2660\033[0;0m";
+    break;
+  default:
+    std::cout << "error!! printCard\n" << " type: " << t << " suit: " << s << "\n";
+  }
 }
