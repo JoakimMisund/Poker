@@ -31,8 +31,9 @@ unsigned int Table::nextTableId = 0;
 int Table::getTableId() { return tableId; }
 unsigned int Table::setPotSize( unsigned int value ) { return potSize = value;}
 unsigned int Table::getPotSize() { return potSize; }
-std::vector<Player> Table::getPlayers() { return players; }
+std::vector<Player> &Table::getPlayers() { return players; }
 void Table::addCardToBoard( Card c ) { board.push_back(c); }
+std::vector<Card> Table::getCardsOnBoard() { return board; }
 unsigned int Table::getNumCards() { return board.size(); }
 
 bool Table::registerUser( User *user, unsigned int tablePosition )

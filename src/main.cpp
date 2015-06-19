@@ -12,7 +12,8 @@ class Table;
 enum handStrength{ HIGH_CARD = 0, PAIR = 1, TWO_PAIRS = 2, THREE_OF_A_KIND = 3, STRAIGHT = 4, FLUSH = 5, FULL_HOUSE = 6, FOUR_OF_A_KIND = 7, STRAIGHT_FLUSH = 8 };
 
 void runTable( Table &t );
-Player* findWinner( Table &t );
+std::vector<Player*> findWinners( Table &t );
+std::vector<Card> findBestCombination( std::vector<Card> &cards );
 /*
 enum Suit{ HEART, CLUB, SPADE, DIAMOND };
 enum Type{ TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE, TEN, JACK, QUEEN, KING, ACE };
@@ -34,7 +35,7 @@ void print_hand( std::vector<Card> &hand )
   }
   std::cout << "\n";
 }
-handStrength getHandStrength( std::vector<Card> &hand, Type &t1, Type &t2 );
+handStrength getHandStrength( std::vector<Card> hand, Type &t1, Type &t2 );
 
 void test_getHandStrength()
 {
@@ -64,39 +65,46 @@ void test_getHandStrength()
 
 void test_findBestCombination() 
 {
+  //std::vector<Card> findBestCombination( std::vector<Card> cards )
+  //input 7 cards, output: 5 cards (the ideal combination)
 
+  CardDeck deck(time(NULL));
+  std::vector<Card> possibleCards;
+ 
+
+  for( int i = 0; i < 7; ++i ) { //add 7 cards
+    possibleCards.push_back( deck.getNextCard() );
+  }
+
+  std::cout << "Cards: ";
   
+  for( Card &c : possibleCards ) {
+    printCard(c);
+  }
+ 
+  std::vector<Card> bestHand = findBestCombination( possibleCards );
+  
+  std::cout << "\nBest hand: ";
+  for( Card &c : bestHand ) {
+    printCard(c);
+  }
+  std::cout << "\n";
 }
 
 int main( int argc, char *argv[] )
 {
-
+  /*test_findBestCombination();
+  return 1;
   test_getHandStrength();
   return 1;
-  CardDeck deck(time(NULL));
-
-  std::map<std::string,int> seen_cards;
-
-  for( int k = 0; k < 10; ++k) {
-    deck.resetDeck();
-
-    for( int i = 0; i < 52; ++i ) {
-      Card next_card = deck.getNextCard();
-      //std::cout << cardToString( next_card ) << "\n";
-      seen_cards[cardToString(next_card)] = 1;
-    }
-
-    std::cout << "Nr of distinc cards = "  << seen_cards.size() << "\n";
-  }
-
+  */
   //construct table
-  /*  Table t;
+    Table t;
   User user(15000);
   t.registerUser( &user, 0 );
   t.registerUser( nullptr, 1 );
   //run the table
   runTable(t);
-  */
   return 0;
 }
 
@@ -110,15 +118,17 @@ void runTable( Table &t )
 
     deck.resetDeck();
     //Give all players 2 cards
-    auto players = t.getPlayers();
+    std::vector<Player> &players = t.getPlayers();
     for( auto &player: players ) {
       player.setFirstCard( deck.getNextCard() );
     }
     for( auto &player: players ) {
       player.setSecondCard( deck.getNextCard() );
 
-      std::cout << "Player " << player.getTablePosition() << ":" <<
-	cardToString(player.getFirstCard()) << " " << cardToString(player.getSecondCard()) << "\n";
+      std::cout << "Player " << player.getTablePosition() << ": ";
+      printCard( player.getFirstCard());
+      printCard( player.getSecondCard());
+      std::cout << "\n";
     }
 
     Player *smallBlind = t.findSmallBlind( dealerPosition );
@@ -175,8 +185,15 @@ void runTable( Table &t )
 
       } while ( playerToAct != lastInRound ); //If the next player to act is the last in the round, the round is over
 
+      for( Player &p : t.getPlayers() ) {
+	std::cout << "\nPlayer " << p.getTablePosition() << ": ";
+	printCard( p.getFirstCard());
+	printCard( p.getSecondCard());
+	std::cout << "\n";
+      }
+
       unsigned int numCardsOnTable = t.getNumCards();
-      Player* winner = nullptr;
+      std::vector<Player*> winners;
       switch( numCardsOnTable ) {
 
       case 0:	 //pre-flop
@@ -189,12 +206,21 @@ void runTable( Table &t )
 	t.addCardToBoard(deck.getNextCard());
 	break;
       case 5: //end
-	winner = findWinner( t );
+	winners = findWinners( t );
+
+	std::cout << "winner(s): ";
+	for( Player *p : winners ) {
+	  std::cout << p->getTablePosition() << "\n";
+	}
+	return;
 	break;
       default:
 	std::cout << "nuym cards: " << numCardsOnTable <<  "\n";
       }
 
+      for( Card &c : t.getCardsOnBoard() ) {
+	printCard(c);
+      }
 
       //Find winner
     }
@@ -209,7 +235,7 @@ void incrementTablePosition( unsigned int &index, int nr )
 }
 
 //seems to be done
-handStrength getHandStrength( std::vector<Card> &hand, Type &t1, Type &t2 )
+handStrength getHandStrength( std::vector<Card> hand, Type &t1, Type &t2 )
 {
   std::sort( begin(hand), end(hand), []( Card c1, Card c2 ) {
       return c1.type < c2.type;
@@ -223,11 +249,9 @@ handStrength getHandStrength( std::vector<Card> &hand, Type &t1, Type &t2 )
   Suit s = hand[0].suit;
   bool straight = true;
   bool flush = true;
-  std::cout << t << "\n";
 
   for( unsigned int i = 1; i < hand.size(); ++i ) { //check flush and straight
     Card curr = hand[i];
-    std::cout << curr.type << "\n";
  
     if( curr.type != t+1 ) { //not a straight
       straight = false;
@@ -255,14 +279,12 @@ handStrength getHandStrength( std::vector<Card> &hand, Type &t1, Type &t2 )
   //find max of a kind
   unsigned short max = 0;
   t = Type::TWO;
-  std::cout << "hand size: " << hand.size() << "\n";
   for( unsigned int i = 0; i < hand.size(); ++i ) { //go through all cards
     Card c = hand[i];
     unsigned short count = 1; //how many do i have of this kind?
     for( unsigned int j = i+1; j < hand.size(); ++j ) {
       if( hand[j].type == c.type ) count++;
     }
-    std::cout << "Of this kind: " << count << "\n";
 
     if( count == 4 ) {
       t1 = c.type;
@@ -302,7 +324,7 @@ handStrength getHandStrength( std::vector<Card> &hand, Type &t1, Type &t2 )
 }
 
 //1 if hand1 is better than hand2, -1 if hand2 is better, equal => 0; 
-int compareHands( std::vector<Card> &hand1, std::vector<Card> &hand2 )
+int compareHands( std::vector<Card> hand1, std::vector<Card> hand2 )
 {
   Type h1t1, h2t1;
   Type h1t2, h2t2;
@@ -313,7 +335,6 @@ int compareHands( std::vector<Card> &hand1, std::vector<Card> &hand2 )
     return (h1 > h2) ? 1:-1;
   }
   
-  //hands are equal..
 
   if( h1t1 != h2t1 ) {
     return (h1t1 > h2t1) ? 1:-1;
@@ -321,16 +342,31 @@ int compareHands( std::vector<Card> &hand1, std::vector<Card> &hand2 )
   if( h1t2 != h2t2 ) {
     return (h1t2 > h2t2) ? 1:-1;
   }
+
+  //Highest card desides.
+  std::sort( begin(hand1), end(hand1), []( Card c1, Card c2 ) {
+      return c1.type < c2.type;
+    } );
+  std::sort( begin(hand2), end(hand2), []( Card c1, Card c2 ) {
+      return c1.type < c2.type;
+    } );
+
+  for( int i = hand1.size()-1; i >= 0; --i ) {
+    if( hand1[i].type == h1t1 || hand1[i].type == h1t2) continue;
+    if( hand1[i].type > hand2[i].type ) return 1;
+    else if( hand1[i].type < hand2[i].type ) return -1;
+  }
+
   
   return 0;
 
 }
 
 //find best hand of 5 from 7 cards.
-std::vector<Card> findBestCombination( std::vector<Card> cards )
+std::vector<Card> findBestCombination( std::vector<Card> &cards )
 {
   assert( cards.size() == 7 );
-
+  
   std::vector<Card> currentHand;
   std::vector<Card> bestHand;
 
@@ -349,7 +385,20 @@ std::vector<Card> findBestCombination( std::vector<Card> cards )
 
       if( bestHand.size() == 0 ) {
 	bestHand = currentHand;
+	std::cout << "first\n";
       } else {
+	std::cout << "notfirst\n";
+	
+	std::cout << "Best so far: ";
+	for( Card &c : bestHand ) {
+	  printCard(c);
+	}
+	std::cout << "Challenger: ";
+	for( Card &c : currentHand ) {
+	  printCard(c);
+	}
+	std::cout << "\n";
+	
 	if( compareHands( currentHand, bestHand ) == 1 ) {
 	  bestHand = currentHand;
 	}
@@ -362,8 +411,51 @@ std::vector<Card> findBestCombination( std::vector<Card> cards )
 
 }
 
-Player* findWinner( Table &t )
+std::vector<Player*> findWinners( Table &t )
 {
   //have to generate the best hand of all the players, then have an elimination tournament.
-  return nullptr;
+  std::vector<Player> &players = t.getPlayers();
+  std::vector<Player*> currentBest;
+  std::vector<Card> bestHand;
+
+  for( Player &p : players ) {
+  
+    std::cout << "Player: " << p.getTablePosition() << "\n";
+    unsigned int tablePosition = p.getTablePosition();
+    //todo find best hand, compare to next one.
+    std::vector<Card> possibleCards = t.getCardsOnBoard();
+    possibleCards.push_back( p.getFirstCard() );
+    possibleCards.push_back( p.getSecondCard() );
+    
+
+    for( Card &c : possibleCards ) {
+      printCard(c);
+    }
+    std::cout << "herr\n";
+
+    std::vector<Card> hand = findBestCombination( possibleCards );
+
+    if( bestHand.size() == 0 ) {
+      currentBest.push_back(&p);
+      bestHand = hand;
+    } else {
+
+      int compareResult = compareHands(hand, bestHand);
+      if( compareResult == 1 ) {
+        currentBest.clear();
+        currentBest.push_back(&p);
+        bestHand = hand;
+      } else if ( compareResult == 0 ) { //new shared best
+        currentBest.push_back(&p);
+      }
+    }
+    
+  }
+  std::cout << "winning hand: ";
+  for( Card &c : bestHand ) {
+    printCard(c);
+  }
+  std::cout << "\n";
+  
+  return currentBest;
 }

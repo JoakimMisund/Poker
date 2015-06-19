@@ -21,9 +21,10 @@ public:
   int getTableId();
   unsigned int setPotSize( unsigned int value);
   unsigned int getPotSize();
-  std::vector<Player> getPlayers();
+  std::vector<Player>& getPlayers();
   void addCardToBoard( Card c );
   unsigned int getNumCards();
+  std::vector<Card> getCardsOnBoard();
   bool registerUser( User *user, unsigned int tablePosition );
   Player* getPlayerAfter( Player *p );
   Player* findSmallBlind( unsigned int dealerPosition );
