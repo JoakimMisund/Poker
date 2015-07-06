@@ -4,6 +4,8 @@
 #include "CardDeck.h"
 #include "User.h"
 #include "Player.h"
+#include "Utils.h"
+
 #define MAX_NR_PLAYERS 8
 
 
@@ -12,22 +14,34 @@ class Table {
 public:
   Table();
   int getTableId();
-  unsigned int setPotSize( unsigned int value);
 
   std::vector<Player*> getPlayers();
+  std::vector<Card>& getCardsOnBoard();
+  Player* getPlayerAfter( Player *p, std::vector<Player*> &players );
+  Player* getPlayerAtPosition( unsigned int position, std::vector<Player*> &players );
+
   void addCardToBoard( Card c );
   unsigned int getNumCards();
-  std::vector<Card> getCardsOnBoard();
+
   bool registerUser( User *user, unsigned int tablePosition );
-  Player* getPlayerAfter( Player *p );
-  Player* findSmallBlind( unsigned int dealerPosition );
-  Player* findBigBlind( unsigned int dealerPosition );
-  Player* getPlayerAtPosition( unsigned int position );
+
+  Player* findSmallBlind( unsigned int dealerPosition, std::vector<Player*> &players );
+  Player* findBigBlind( unsigned int dealerPosition, std::vector<Player*> &players );
+
+  std::vector<Player*> findWinners( std::vector<Player*> &players );
+  void giveTwoCardsToPlayers( std::vector<Player*> players );
+
+  void runTable();
+  void runHand( std::vector<Player*> playersInHand );
+
 private:
   std::vector<Player> players;
   std::vector<Card> board;
 
   unsigned int tableId;
+  unsigned int smallBlind;
+  unsigned int bigBlind;
+  CardDeck deck;
 };
 
 #endif

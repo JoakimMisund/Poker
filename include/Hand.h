@@ -9,10 +9,14 @@ class Hand {
  private:
   std::vector<Player*> playersInHand;
   unsigned int potSize;
-  Table *table;
   
  public:
+
+  Hand( std::vector<Player*> &players );
+
   unsigned int getPotSize();
+  unsigned int setPotSize();
+
   
 };
 

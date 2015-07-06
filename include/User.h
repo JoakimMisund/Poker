@@ -1,3 +1,6 @@
+#ifndef USER_H
+#define USER_H
+
 class User {
   static int nextUserId;
 
@@ -10,3 +13,5 @@ private:
   unsigned int bankroll;
   int socket; //in case of connected human.
 };
+
+#endif

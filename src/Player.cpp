@@ -1,7 +1,7 @@
 #include "../include/Player.h"
 
-Player::Player():stackSize(0),user(nullptr),tablePosition(-1) {}
-Player::Player(User *user, unsigned int stackSize, unsigned int tablePosition ):stackSize{stackSize},user{user},tablePosition{tablePosition}{}
+Player::Player():stackSize(0),user(nullptr),tablePosition(-1),state{ACTIVE} {}
+Player::Player(User *user, unsigned int stackSize, unsigned int tablePosition ):stackSize{stackSize},user{user},tablePosition{tablePosition},state{ACTIVE}{}
 unsigned int Player::getStackSize() { return stackSize; }
 unsigned int Player::reduceStackSize( int amount ) { return stackSize -= amount; }
 unsigned int Player::increaseStackSize( int amount ) { return stackSize += amount; }
@@ -88,3 +88,4 @@ void Player::setSecondCard( Card c ) { cards[1] = c; }
 Card Player::getFirstCard() { return cards[0]; }
 Card Player::getSecondCard() { return cards[1]; }
 
+PlayerState Player::getState() { return state; }

@@ -1,5 +1,6 @@
 #include "../include/CardDeck.h"
 #include <cstdlib>
+#include <ctime>
 #include <iostream>
 
 CardDeck::CardDeck():deck{52},nextCardIndex{0},seed{0}
@@ -34,13 +35,12 @@ void CardDeck::resetDeck()
 
 void CardDeck::shuffleDeck()
 {
-  srand( seed );
+  srand( time(NULL) );
   for( unsigned int i = 0; i < 50; ++i ) { //Do 50 times
     for( unsigned int j = 0; j < deck.size(); ++j ) { //Go through all cards
       swap(j, getRandomValue());
     }
   }
-  seed = seed * 13;
 }
 
 int CardDeck::getRandomValue()

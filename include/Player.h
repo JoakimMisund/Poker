@@ -1,11 +1,17 @@
 #ifndef PLAYER_H
 #define PLAYER_H
 
+#include <iostream>
+#include "../include/CardDeck.h"
+#include "../include/User.h"
+
 enum ActionType { FOLD, BET, CALL, RAISE, CHECK };
 struct Action {
   ActionType action;
   int amount;
 };
+
+enum PlayerState { ACTIVE, AWAY };
 
 
 class Player { //One instance of a user at a table.
@@ -24,6 +30,9 @@ class Player { //One instance of a user at a table.
   Card getFirstCard();
   Card getSecondCard();
 
+  PlayerState getState();
+  void setPlayerState( PlayerState state );
+
   bool folded;
 
  private:
@@ -31,6 +40,7 @@ class Player { //One instance of a user at a table.
   User *user; //if nullptr, the player is a computer.
   Card cards[2];
   unsigned int tablePosition;
+  PlayerState state;
   //Add user
 };
 
