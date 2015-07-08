@@ -19,6 +19,7 @@ public:
   std::vector<Card>& getCardsOnBoard();
   Player* getPlayerAfter( Player *p, std::vector<Player*> &players );
   Player* getPlayerAtPosition( unsigned int position, std::vector<Player*> &players );
+  Player* getPlayerAtPosition( unsigned int position );
 
   void addCardToBoard( Card c );
   unsigned int getNumCards();
@@ -30,6 +31,8 @@ public:
 
   std::vector<Player*> findWinners( std::vector<Player*> &players );
   void giveTwoCardsToPlayers( std::vector<Player*> players );
+
+  void draw( unsigned int potSize );
 
   void runTable();
   void runHand( std::vector<Player*> playersInHand );

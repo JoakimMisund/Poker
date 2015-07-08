@@ -89,3 +89,11 @@ Card Player::getFirstCard() { return cards[0]; }
 Card Player::getSecondCard() { return cards[1]; }
 
 PlayerState Player::getState() { return state; }
+
+void Player::drawCards()
+{
+  if( user != nullptr ) {
+    printCard(getFirstCard());
+    printCard(getSecondCard());
+  }
+}

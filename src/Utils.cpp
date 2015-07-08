@@ -77,12 +77,12 @@ std::vector<Card> findBestCombination( std::vector<Card> &cards )
 	bestHand = currentHand;
       } else {
 	
-	std::cout << "Best so far: ";
+	/*	std::cout << "Best so far: ";
 	for_each( begin(bestHand), end(bestHand), printCard );
 	std::cout << " Challenger: ";
 	for_each( begin(currentHand), end(currentHand), printCard );
 	std::cout << "\n";
-	
+	*/
 	if( compareHands( currentHand, bestHand ) == 1 ) {
 	  bestHand = currentHand;
 	}

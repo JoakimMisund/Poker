@@ -23,8 +23,14 @@ int main( int argc, char *argv[] )
   //construct table
   Table t;
   User user(15000);
-  t.registerUser( &user, 0 ); //add a user
+  t.registerUser( &user, 0 ); //add a User
   t.registerUser( nullptr, 1 ); //add a computer
+  t.registerUser( nullptr, 2 ); //add a computer
+  t.registerUser( nullptr, 3 ); //add a computer
+  t.registerUser( nullptr, 4 ); //add a computer
+  t.registerUser( nullptr, 5 ); //add a computer
+  t.registerUser( nullptr, 6 ); //add a computer
+  t.registerUser( nullptr, 7 ); //add a computer
   t.runTable();
   return 0;
 }

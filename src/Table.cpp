@@ -3,6 +3,8 @@
 #include <iostream>
 #include <algorithm>
 #include <array>
+#include <thread>
+#include <chrono>
 
 /*class Table {
   static int nextTableId;
@@ -71,6 +73,8 @@ void Table::giveTwoCardsToPlayers( std::vector<Player*> players )
 
 void Table::runHand( std::vector<Player*> playersInHand )
 {
+
+  std::cout << "nrPlayers " << playersInHand.size() << "\n";
   
   unsigned int dealerPosition = 0;
     
@@ -88,6 +92,9 @@ void Table::runHand( std::vector<Player*> playersInHand )
   unsigned int potSize = 0;
     
   while( 1 ) {
+
+    draw(potSize);
+
     std::array<int,8> bets {0,0,0,0,0,0,0,0}; //bets of players
       
     Player *playerToAct = nullptr;
@@ -108,6 +115,8 @@ void Table::runHand( std::vector<Player*> playersInHand )
     do {
       unsigned int tablePosition = playerToAct->getTablePosition();
       Action a = playerToAct->promptForAction( actionToMatch );
+
+      std::cout << tablePosition << " " << a.action << "\n";
 	
       if( a.action == ActionType::BET ||
 	  a.action == ActionType::RAISE ) {
@@ -130,10 +139,16 @@ void Table::runHand( std::vector<Player*> playersInHand )
 	playersInHand.erase(std::remove(begin(playersInHand),end(playersInHand), playerToAct),
 			    end(playersInHand));
       }
-
+      
+      std::cout << "PlayerToAct: " << playerToAct->getTablePosition();
       playerToAct = getPlayerAfter( playerToAct, playersInHand );
+      std::cout << "    PlayerToAct: " << playerToAct->getTablePosition() << "\n";
 
     } while (lastInRound != playerToAct);
+
+    for( int bet : bets ) {
+      potSize += bet;
+    }
 
     unsigned int numCardsOnTable = getNumCards();
     std::vector<Player*> winners;
@@ -155,15 +170,16 @@ void Table::runHand( std::vector<Player*> playersInHand )
 
       std::cout << "winner(s): ";
       for( Player *p : winners ) {
-	std::cout << "Player " << p->getTablePosition() << " won! \n";
+	std::cout << "Player " << p->getTablePosition() << " won: " << potSize/winners.size() <<  " with: ";
+	printCard(p->getFirstCard());
+	printCard(p->getSecondCard());
+	std::cout << "\n";
+	p->increaseStackSize(potSize/winners.size());
       }
       return;
     default:
       std::cout << "nuym cards: " << numCardsOnTable <<  "\n";
     }
-      
-    std::vector<Card> cardsOnTheTable = getCardsOnBoard();
-    for_each( begin(cardsOnTheTable), end(cardsOnTheTable), printCard );
   }
 }
 
@@ -179,6 +195,7 @@ void Table::runTable()
     board.clear();
     deck.resetDeck();
     
+    std::this_thread::sleep_for( std::chrono::milliseconds(10000));
   }
 }
 void Table::addCardToBoard( Card c ) { board.push_back(c); }
@@ -215,8 +232,12 @@ Player* Table::getPlayerAfter( Player *p, std::vector<Player*> &players )
 
   unsigned int tablePosition = p->getTablePosition();
   Player* after = players[0];
+  unsigned int minDist = 100;
   for( auto p : players ) {
-    if( p->getTablePosition() > tablePosition ) after = p;
+    if( p->getTablePosition() > tablePosition && (p->getTablePosition() - p->getTablePosition()) < minDist ) {
+      after = p;
+      minDist = p->getTablePosition() - p->getTablePosition();
+    }
   }
   return after;
 }
@@ -225,6 +246,14 @@ Player* Table::getPlayerAtPosition( unsigned int position, std::vector<Player*> 
 {
   for( auto p : players ) {
     if( p->getTablePosition() == position) return p;
+  }
+  return nullptr;
+}
+
+Player* Table::getPlayerAtPosition( unsigned int position )
+{
+  for( auto &p : players ) {
+    if( p.getTablePosition() == position) return &p;
   }
   return nullptr;
 }
@@ -249,7 +278,6 @@ std::vector<Player*> Table::findWinners( std::vector<Player*> &players )
 
   for( Player *p : players ) {
   
-    std::cout << "Player: " << p->getTablePosition() << "\n";
     unsigned int tablePosition = p->getTablePosition();
     //todo find best hand, compare to next one.
     std::vector<Card> possibleCards = getCardsOnBoard();
@@ -281,4 +309,46 @@ std::vector<Player*> Table::findWinners( std::vector<Player*> &players )
   std::cout << "\n";
   
   return currentBest;
+}
+
+void Table::draw( unsigned int potSize)
+{
+
+  std::cout << "\033[2J \033[2;0f";
+  for( int i = 0; i < MAX_NR_PLAYERS; ++i ) {
+    
+    Player *p = getPlayerAtPosition(i);
+    if( p != nullptr ) {
+
+      switch(i) {
+      case 0: std::cout << "\033[2;10f Player 0\n\033[12C" << p->getStackSize();
+	break;
+      case 1: std::cout << "\033[2;23f Player 1\n\033[25C" << p->getStackSize();
+	break;
+      case 2: std::cout << "\033[2;40f Player 2\n\033[42C" << p->getStackSize();
+	break;
+      case 3: std::cout << "\033[5;45f Player 3\n\033[47C" << p->getStackSize();
+	break;
+      case 4: std::cout << "\033[8;40f Player 4\n\033[42C" << p->getStackSize();
+	break;
+      case 5: std::cout << "\033[8;23f Player 5\n\033[25C" << p->getStackSize();
+	break;
+      case 6: std::cout << "\033[8;10f Player 6\n\033[12C" << p->getStackSize();
+	break;
+      case 7: std::cout << "\033[5;0f Player 7\n\033[2C" << p->getStackSize();
+	break;
+      }
+    }
+    std::cout << " ";
+    p->drawCards();
+  }
+
+  std::cout << "\033[6;20f";
+  std::vector<Card> cardsOnTheTable = getCardsOnBoard();
+  for_each( begin(cardsOnTheTable), end(cardsOnTheTable), printCard );
+
+  std::cout << "\033[5;20fPot: " << potSize;
+
+  std::cout << "\n\n\n\n\n\n\n";
+  
 }

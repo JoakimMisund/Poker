@@ -5,6 +5,7 @@
 #include "../include/CardDeck.h"
 #include "../include/User.h"
 
+
 enum ActionType { FOLD, BET, CALL, RAISE, CHECK };
 struct Action {
   ActionType action;
@@ -32,7 +33,7 @@ class Player { //One instance of a user at a table.
 
   PlayerState getState();
   void setPlayerState( PlayerState state );
-
+  void drawCards();
   bool folded;
 
  private:
