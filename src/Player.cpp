@@ -1,4 +1,5 @@
 #include "../include/Player.h"
+#include <algorithm>
 
 Player::Player():stackSize(0),user(nullptr),tablePosition(-1),state{ACTIVE} {}
 Player::Player(User *user, unsigned int stackSize, unsigned int tablePosition ):stackSize{stackSize},user{user},tablePosition{tablePosition},state{ACTIVE}{}
@@ -11,21 +12,35 @@ Action Player::promptForAction( Action &actionToMatch )
 {
   Action playerAction{ActionType::FOLD,0};
   ActionType toMatch = actionToMatch.action;
-  int amount = actionToMatch.amount;
+  unsigned int amount = actionToMatch.amount;
+
+  Card c1 = getFirstCard();
+  Card c2 = getSecondCard();
 
   if( user == nullptr ) { //Computer should decide
 
     if( toMatch == ActionType::FOLD || toMatch == ActionType::CHECK ) {
     
       playerAction.action = ActionType::BET;
-      playerAction.amount = 100;
-    } else {
+
+      if( static_cast<int>(c2.type)+static_cast<int>(c1.type) >= 16) {
+	  playerAction.amount = 300;
+      } else if( static_cast<int>(c2.type)+static_cast<int>(c1.type) >= 10) {
+	  playerAction.amount = 150;
+      } else {
+	  playerAction.amount = 100;
+      }
+    } else if( getStackSize() >= amount) {
+ 
       if( amount > 500 ) {
 	playerAction.action = ActionType::FOLD;
       } else {
 	playerAction.action = ActionType::CALL;
-	playerAction.amount = amount;
+	playerAction.amount =  amount;
       }
+    } else {
+      playerAction.action = ActionType::CALL;
+      playerAction.amount =  std::min( getStackSize(), amount );
     }
     
   } else if( user->getSocket() == -1 ) { //local user
@@ -56,11 +71,13 @@ Action Player::promptForAction( Action &actionToMatch )
 	break;
       case 'c':
         playerAction.action = ActionType::CALL;
+	playerAction.amount = actionToMatch.amount;
 	break;
       case 'r':
         playerAction.action = ActionType::RAISE;
 	std::cout << "How much?:";
 	std::cin >> playerAction.amount;
+	playerAction.amount += actionToMatch.amount;
 	break;
       case 's':
         playerAction.action = ActionType::CHECK;

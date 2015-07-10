@@ -4,7 +4,10 @@
 #include <algorithm>
 #include <array>
 #include <thread>
+#include <stack>
 #include <chrono>
+#include <memory>
+#include <cstdlib>
 
 /*class Table {
   static int nextTableId;
@@ -71,6 +74,27 @@ void Table::giveTwoCardsToPlayers( std::vector<Player*> players )
   }
 }
 
+struct Pot {
+
+  unsigned int size;
+  std::vector<Player*> players;
+
+  Pot();
+  Pot( unsigned int s, std::vector<Player*> &p);
+  void addPlayer(Player *p);
+};
+void Pot::addPlayer( Player *p )
+{
+  players.push_back(p);
+}
+Pot::Pot():size{0},players{0} {}
+Pot::Pot( unsigned int s, std::vector<Player*> &p):size{s}
+{
+  players = p;
+}
+
+////////////
+
 void Table::runHand( std::vector<Player*> playersInHand )
 {
 
@@ -88,19 +112,25 @@ void Table::runHand( std::vector<Player*> playersInHand )
     
   Player *smallBlind = findSmallBlind( dealerPosition, playersInHand );
   Player *bigBlind = findBigBlind( dealerPosition, playersInHand );
-   
-  unsigned int potSize = 0;
-    
+  
+  std::stack<std::shared_ptr<Pot>> pots;
+  std::shared_ptr<Pot> startPot( new Pot(0, playersInHand));
+  pots.push(startPot);
+  std::shared_ptr<Pot> currentPot = startPot;
+
+  std::vector<std::string> log;
+  
   while( 1 ) {
 
-    draw(potSize);
+    draw(currentPot->size);
+    std::for_each( begin(log), end(log), [](std::string s) {std::cout << s << "\n";});
 
     std::array<int,8> bets {0,0,0,0,0,0,0,0}; //bets of players
       
     Player *playerToAct = nullptr;
     Player *lastInRound = nullptr;
      
-    playerToAct = getPlayerAfter(bigBlind, playersInHand);
+    playerToAct = getPlayerAfter(bigBlind, currentPot->players);
     lastInRound = playerToAct;
 
     if( getNumCards() == 0 ) { //preflopp
@@ -116,8 +146,21 @@ void Table::runHand( std::vector<Player*> playersInHand )
       unsigned int tablePosition = playerToAct->getTablePosition();
       Action a = playerToAct->promptForAction( actionToMatch );
 
-      std::cout << tablePosition << " " << a.action << "\n";
-	
+      // enum ActionType { FOLD, BET, CALL, RAISE, CHECK };
+
+      std::string actions[5] = {"folded", "bets", "calls", "raises to", "checks"};
+
+      std::cout << "Player " << playerToAct->getTablePosition() << " " << actions[a.action];
+      std::string log_action = "";
+      log_action += std::string("Player ") + std::to_string(playerToAct->getTablePosition()) + " " + actions[a.action] + " " + std::to_string(a.amount);
+      log.push_back(log_action);
+
+      if( a.action == ActionType::BET || a.action == ActionType::RAISE ) {
+	std::cout << " " << a.amount << "!";
+      } 
+      std::cout << "\n";
+      
+
       if( a.action == ActionType::BET ||
 	  a.action == ActionType::RAISE ) {
 
@@ -138,19 +181,39 @@ void Table::runHand( std::vector<Player*> playersInHand )
 
 	playersInHand.erase(std::remove(begin(playersInHand),end(playersInHand), playerToAct),
 			    end(playersInHand));
+
+	//Need to remove from all pots.
+	currentPot->players.erase(std::remove(begin(currentPot->players),end(currentPot->players), playerToAct),
+				 end(currentPot->players));
+	
       }
       
-      std::cout << "PlayerToAct: " << playerToAct->getTablePosition();
-      playerToAct = getPlayerAfter( playerToAct, playersInHand );
-      std::cout << "    PlayerToAct: " << playerToAct->getTablePosition() << "\n";
+      playerToAct = getPlayerAfter( playerToAct, currentPot->players );
+      draw(currentPot->size);
+      std::for_each( begin(log), end(log), [](std::string s) {std::cout << s << "\n";});
+      
+      std::this_thread::sleep_for( std::chrono::milliseconds{1000} );
 
     } while (lastInRound != playerToAct);
 
     for( int bet : bets ) {
-      potSize += bet;
+      currentPot->size += bet;
+    }
+    
+    unsigned int numCardsOnTable = getNumCards();
+
+    if( playersInHand.size() == 1 ) {
+      pots.pop();
+      pots.push(currentPot);
+      Player *p = playersInHand[0];
+      std::cout << "Player " << p->getTablePosition() << " won: " << currentPot->size <<  " with: ";
+	printCard(p->getFirstCard());
+	printCard(p->getSecondCard());
+	std::cout << "\n";
+	p->increaseStackSize(currentPot->size);
+	return;
     }
 
-    unsigned int numCardsOnTable = getNumCards();
     std::vector<Player*> winners;
     //todo numcardsontable
     switch( numCardsOnTable ) {
@@ -166,20 +229,30 @@ void Table::runHand( std::vector<Player*> playersInHand )
       break;
     case 5: //end
       //TODO send with list of players that are still in the game
-      winners = findWinners( playersInHand );
+      //winners = findWinners( playersInHand );
 
-      std::cout << "winner(s): ";
-      for( Player *p : winners ) {
-	std::cout << "Player " << p->getTablePosition() << " won: " << potSize/winners.size() <<  " with: ";
-	printCard(p->getFirstCard());
-	printCard(p->getSecondCard());
-	std::cout << "\n";
-	p->increaseStackSize(potSize/winners.size());
+      pots.pop();
+      pots.push(currentPot);
+
+      while( !pots.empty() ) {
+	currentPot = pots.top();
+	pots.pop();
+
+	winners = findWinners(currentPot->players);
+	std::cout << "winner(s): ";
+	for( Player *p : winners ) {
+	  std::cout << "Player " << p->getTablePosition() << " won: " << currentPot->size/winners.size() <<  " with: ";
+	  printCard(p->getFirstCard());
+	  printCard(p->getSecondCard());
+	  std::cout << "\n";
+	  p->increaseStackSize(currentPot->size/winners.size());
+	}
       }
       return;
     default:
       std::cout << "nuym cards: " << numCardsOnTable <<  "\n";
     }
+    std::this_thread::sleep_for( std::chrono::milliseconds{1000} );
   }
 }
 
@@ -194,8 +267,8 @@ void Table::runTable()
     
     board.clear();
     deck.resetDeck();
+    std::this_thread::sleep_for( std::chrono::milliseconds{7000} );
     
-    std::this_thread::sleep_for( std::chrono::milliseconds(10000));
   }
 }
 void Table::addCardToBoard( Card c ) { board.push_back(c); }
@@ -327,28 +400,28 @@ void Table::draw( unsigned int potSize)
 	break;
       case 2: std::cout << "\033[2;40f Player 2\n\033[42C" << p->getStackSize();
 	break;
-      case 3: std::cout << "\033[5;45f Player 3\n\033[47C" << p->getStackSize();
+      case 3: std::cout << "\033[7;45f Player 3\n\033[47C" << p->getStackSize();
 	break;
-      case 4: std::cout << "\033[8;40f Player 4\n\033[42C" << p->getStackSize();
+      case 4: std::cout << "\033[12;40f Player 4\n\033[42C" << p->getStackSize();
 	break;
-      case 5: std::cout << "\033[8;23f Player 5\n\033[25C" << p->getStackSize();
+      case 5: std::cout << "\033[12;23f Player 5\n\033[25C" << p->getStackSize();
 	break;
-      case 6: std::cout << "\033[8;10f Player 6\n\033[12C" << p->getStackSize();
+      case 6: std::cout << "\033[12;10f Player 6\n\033[12C" << p->getStackSize();
 	break;
-      case 7: std::cout << "\033[5;0f Player 7\n\033[2C" << p->getStackSize();
+      case 7: std::cout << "\033[7;0f Player 7\n\033[2C" << p->getStackSize();
 	break;
       }
     }
-    std::cout << " ";
+    std::cout << "\033[1B \033[10DCards:";
     p->drawCards();
   }
 
-  std::cout << "\033[6;20f";
+  std::cout << "\033[8;20f";
   std::vector<Card> cardsOnTheTable = getCardsOnBoard();
   for_each( begin(cardsOnTheTable), end(cardsOnTheTable), printCard );
 
-  std::cout << "\033[5;20fPot: " << potSize;
+  std::cout << "\033[7;18fPot: " << potSize;
 
-  std::cout << "\n\n\n\n\n\n\n";
+  std::cout << "\033[18;0f";
   
 }
