@@ -95,6 +95,16 @@ Pot::Pot( unsigned int s, std::vector<Player*> &p):size{s}
 
 ////////////
 
+unsigned int min_bet( std::array<int,8> &bets )
+{
+  int min = 0;
+  for( int i : bets ) {
+    if( min == 0 ) min = i;
+    if( min > i && i != 0 ) min = i;
+  }
+  return min;
+}
+
 void Table::runHand( std::vector<Player*> playersInHand )
 {
 
@@ -143,6 +153,8 @@ void Table::runHand( std::vector<Player*> playersInHand )
     Action actionToMatch{CHECK,0};
       
     do {
+
+      if( playerToAct->getStackSize() == 0 ) continue;
       unsigned int tablePosition = playerToAct->getTablePosition();
       Action a = playerToAct->promptForAction( actionToMatch );
 
@@ -173,18 +185,27 @@ void Table::runHand( std::vector<Player*> playersInHand )
 
       } else if ( a.action == ActionType::CALL) {
 
-	int outstandingAmount = bets[tablePosition];
-	bets[tablePosition] = actionToMatch.amount;
-	playerToAct->reduceStackSize( actionToMatch.amount - outstandingAmount );
-	    
+	if( a.amount < actionToMatch.amount ) { //player is all in
+	  int outstandingAmount = bets[tablePosition];
+	  bets[tablePosition] += a.amount;
+	  playerToAct->reduceStackSize( a.amount );
+	  
+	} else {
+	  int outstandingAmount = bets[tablePosition];
+	  bets[tablePosition] = actionToMatch.amount;
+	  playerToAct->reduceStackSize( actionToMatch.amount - outstandingAmount );
+	}
       } else if ( a.action == ActionType::FOLD ) {
 
-	playersInHand.erase(std::remove(begin(playersInHand),end(playersInHand), playerToAct),
-			    end(playersInHand));
-
-	//Need to remove from all pots.
-	currentPot->players.erase(std::remove(begin(currentPot->players),end(currentPot->players), playerToAct),
-				 end(currentPot->players));
+	std::stack<std::shared_ptr<Pot>> tmp;
+	while(!pots.empty()) {
+	  std::shared_ptr<Pot> c = pots.top();
+	  pots.pop();
+	  
+	  c->players.erase(std::remove( begin(c->players), end(c->players), playerToAct), end(c->players));
+	  tmp.push(c);
+	}
+	while(!tmp.empty()) { pots.push( tmp.top() ); tmp.pop(); }
 	
       }
       
@@ -196,22 +217,70 @@ void Table::runHand( std::vector<Player*> playersInHand )
 
     } while (lastInRound != playerToAct);
 
-    for( int bet : bets ) {
-      currentPot->size += bet;
+
+    // Make this recursive untill all side pots are done.
+    int min_value;
+
+    std::for_each(begin(bets), end(bets), []( int i ) { std::cout << " " << i;});
+    std::cout << "\n";
+    std::cout << *std::max_element( begin(bets), end(bets) ) << "\n";
+    std::this_thread::sleep_for( std::chrono::milliseconds{1000} );
+
+    while( (min_value = min_bet( bets )) != 0 ) {
+
+      std::this_thread::sleep_for( std::chrono::milliseconds{1000} );
+      if( min_value != *std::max_element( begin(bets), end(bets) ) && currentPot->players.size() != 1 ) {
+
+	std::for_each(begin(bets), end(bets), []( int i ) { std::cout << " " << i;});
+	std::cout << "\n";
+
+	//	std::cout << *std::max_element( begin(bets), end(bets) ) << "\n";
+	std::this_thread::sleep_for( std::chrono::milliseconds{1000} );
+
+	std::cout << min_value << "...." << *std::max_element( begin(bets), end(bets) ) << "\n";
+	//Need new side pot.
+	std::shared_ptr<Pot> sidePot( new Pot(0, currentPot->players ) );
+	//Remove the players that cant continue.
+	for( Player* p: currentPot->players ) {
+	  if( bets[p->getTablePosition()] == min_value ) {
+	    sidePot->players.erase(std::remove(begin(sidePot->players),end(sidePot->players), p),
+				   end(sidePot->players));
+	  }
+	}
+
+	for( int &bet : bets ) {
+	  if( bet >= min_value ) currentPot->size += min_value;
+	  bet -= min_value;
+	  (bet < 0) ? bet = 0:bet = bet;
+	}
+      
+	pots.push(sidePot);
+	currentPot = sidePot;
+      } else {
+	for( int bet : bets ) {
+	  currentPot->size += bet;
+	}
+	break;
+      }
     }
     
     unsigned int numCardsOnTable = getNumCards();
 
-    if( playersInHand.size() == 1 ) {
-      pots.pop();
-      pots.push(currentPot);
-      Player *p = playersInHand[0];
-      std::cout << "Player " << p->getTablePosition() << " won: " << currentPot->size <<  " with: ";
+    if( currentPot->players.size() == 1 ) {
+      std::cout << pots.size() << "\n";
+      while( !pots.empty() ) {
+	currentPot = pots.top();
+	pots.pop();
+
+	Player *p = currentPot->players[0];
+	std::cout << "Player " << p->getTablePosition() << " won: " << currentPot->size <<  " with: ";
 	printCard(p->getFirstCard());
 	printCard(p->getSecondCard());
 	std::cout << "\n";
 	p->increaseStackSize(currentPot->size);
-	return;
+	
+      }
+      return;
     }
 
     std::vector<Player*> winners;
@@ -230,9 +299,6 @@ void Table::runHand( std::vector<Player*> playersInHand )
     case 5: //end
       //TODO send with list of players that are still in the game
       //winners = findWinners( playersInHand );
-
-      pots.pop();
-      pots.push(currentPot);
 
       while( !pots.empty() ) {
 	currentPot = pots.top();

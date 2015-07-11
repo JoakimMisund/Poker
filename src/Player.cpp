@@ -47,7 +47,9 @@ Action Player::promptForAction( Action &actionToMatch )
 
     char action = 0;
     while( action == 0 ) {
-      if( toMatch == ActionType::FOLD ) {
+      if( static_cast<unsigned int>(actionToMatch.amount) >= getStackSize() ) {
+	std::cout << "What action do you want to take?(c: call, f:fold) :";
+      } else if( toMatch == ActionType::FOLD ) {
 	std::cout << "What action do you want to take?(b: bet, f:fold, s: check) :";
       } else if( toMatch == ActionType::BET ) {
 	std::cout << "What action do you want to take?(f:fold, c: call, r: raise) :";
@@ -71,13 +73,12 @@ Action Player::promptForAction( Action &actionToMatch )
 	break;
       case 'c':
         playerAction.action = ActionType::CALL;
-	playerAction.amount = actionToMatch.amount;
+	playerAction.amount = (getStackSize() >= static_cast<unsigned int>(actionToMatch.amount)) ? actionToMatch.amount:getStackSize();
 	break;
       case 'r':
         playerAction.action = ActionType::RAISE;
 	std::cout << "How much?:";
 	std::cin >> playerAction.amount;
-	playerAction.amount += actionToMatch.amount;
 	break;
       case 's':
         playerAction.action = ActionType::CHECK;
