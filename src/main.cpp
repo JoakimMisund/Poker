@@ -7,10 +7,98 @@
 #include <algorithm>
 #include <cassert>
 #include "../include/Utils.h"
+#include <sys/epoll.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <cstring>
+#include <unistd.h>
+#include <chrono>
+#include <thread>
+#include <atomic>
+
+using namespace std::chrono;
 
 
 void test_getHandStrength();
 void test_findBestCombination();
+
+int setupServerSocket( char* portnumber )
+{
+  int sock;
+  struct addrinfo hints;
+  struct addrinfo *res;
+  int optval = 1;
+
+  memset( &hints, 0, sizeof(hints));
+
+  //setup hints
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = AI_PASSIVE;
+
+  if( getaddrinfo(NULL, portnumber, &hints, &res ) != 0 ) {
+    std::cerr << "Error calling getaddrinfo\n";
+    return -1;
+  }
+  struct addrinfo *addr;
+
+  for( addr = res; addr != NULL; addr = addr->ai_next ) {
+
+    sock = socket( addr->ai_family, addr->ai_socktype, addr->ai_protocol);
+
+    if(sock > 0 ) {
+      setsockopt( sock, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
+      if( bind(sock, addr->ai_addr, addr->ai_addrlen) == 0 ) break;
+      else close(sock);
+    }
+  }
+
+  freeaddrinfo(res);
+
+  if( addr == NULL ) {
+    std::cerr << "could not bind to this addr\n";
+    return -1;
+  }
+
+  if( listen(sock,10) != 0 ) {
+    std::cerr << "could not listen to the socket\n";
+    return -1;
+  }
+
+  return sock;
+}
+
+void runThread( int conn_sock )
+{
+  Table t;
+  User *u = new User(15000, conn_sock);
+  t.registerUser( u, 0 ); //add a User
+
+  int nrOpponents = -1;;
+  while( ! (nrOpponents >= 1 && nrOpponents <= 7) ) {
+    send(conn_sock, "How many opponents do you want? (Minumim 1, maximum 7):", 56, 0);
+
+    char resp[2];
+    if( recv(conn_sock, &resp, sizeof(resp), 0) <= 0 ) {
+      std::cerr << "Client has exited\n";
+      close(conn_sock);
+      return;
+    }
+  
+    nrOpponents = resp[0]-'0';
+    std::cout << nrOpponents << "\n";
+  }
+
+  
+
+  for( int i = 0; i < nrOpponents; ++i ) {
+    t.registerUser( nullptr, i+1 );
+  }
+
+  t.runTable();
+}
 
 
 
@@ -20,7 +108,87 @@ int main( int argc, char *argv[] )
   test_findBestCombination();
   test_getHandStrength();
 #endif
-  //construct table
+  //construct tables
+
+  if( argc < 2 ) {
+    std::cerr << "Two few arguments. USAGE: " << argv[0] << " [Portnumber]\n";
+    return -1;
+  }
+
+  int socket = setupServerSocket( argv[1] );
+  if( socket < 0 ) {
+    std::cerr << "Socket could not be set up\n";
+    return -1;
+  }
+
+  std::cout << "socket: " << socket << "\n";
+
+  struct epoll_event ev, events[10];
+  int nfds, epollfd;
+
+  if( (epollfd = epoll_create(10)) == -1 ) {
+    std::cerr << "Could not create epoll\n";
+    return -1;
+  }
+
+  ev.events = EPOLLIN;
+  ev.data.fd = socket;
+  if( epoll_ctl(epollfd, EPOLL_CTL_ADD, socket, &ev ) == -1 ) {
+    std::cerr << "epoll_ctl: socket\n";
+    return -1;
+  }
+
+  std::atomic<bool> done{false};
+  std::thread *f = nullptr;
+
+  while(1) {
+    
+    nfds = epoll_wait( epollfd, events, 10, duration_cast<milliseconds>(seconds(100)).count() );
+    if( nfds == -1 ) {
+      std::cerr << "epoll_wait\n";
+      return -1;
+    }
+
+    for( int i = 0; i < nfds; ++i ) {
+      if( events[i].data.fd == socket ) {
+	int conn_sock = accept( socket, NULL, NULL );
+	if( conn_sock == -1 ) {
+	  std::cerr << "Socket could not be set up, accept\n";
+	  return -1;
+	}
+
+	/*	ev.events = EPOLLIN | EPOLLET;
+	ev.data.fd = conn_sock;
+	if( epoll_ctl(epollfd, EPOLL_CTL_ADD, conn_sock, &ev) == -1 ) {
+	  std::cerr << "epoll_ctl\n";
+	  return -1;
+	  }*/
+
+
+	std::cout << conn_sock << "\n";
+	new std::thread([conn_sock] {
+	    runThread(conn_sock);
+	  });
+	
+
+      } else {
+	char buf[100]{0};
+	if( read( events[i].data.fd, buf, 100 ) == 0 ) {
+	  epoll_ctl(epollfd, EPOLL_CTL_DEL, events[i].data.fd, NULL);
+	  close( events[i].data.fd );
+	  std::cout << "Client has exited\n";
+	}
+	std::cout << buf;
+	//TODO close and remove when exit
+      }
+    }
+  }
+  
+  close(epollfd);
+  close(socket);
+
+  return 0;
+  /*
   Table t;
   User user(15000);
   t.registerUser( &user, 0 ); //add a User
@@ -31,7 +199,7 @@ int main( int argc, char *argv[] )
   t.registerUser( nullptr, 5 ); //add a computer
   t.registerUser( nullptr, 6 ); //add a computer
   t.registerUser( nullptr, 7 ); //add a computer
-  t.runTable();
+  t.runTable();*/
   return 0;
 }
 

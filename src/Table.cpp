@@ -8,30 +8,12 @@
 #include <chrono>
 #include <memory>
 #include <cstdlib>
-
-/*class Table {
-  static int nextTableId;
-
-  public:
-  Table();
-  int getTableId();
-  unsigned int setPotSize( unsigned int value);
-  unsigned int getPotSize();
-  std::vector<Player*> getPlayers();
-  void addCardToBoard( Card c );
-  bool registerUser( User *user, int tablePosition );
-
-  private:
-  std::vector<Player*> players;
-  std::vector<Card> board;
-
-  unsigned int tableId;
-  unsigned int potSize;
-  };
-*/
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <string>
 
 
-Table::Table():players{0},board{0},tableId{nextTableId++}{}
+Table::Table():players{0},board{0},tableId{nextTableId++},deck{},dealerPosition{0}{}
 unsigned int Table::nextTableId = 0;
 
 int Table::getTableId() { return tableId; }
@@ -110,8 +92,6 @@ void Table::runHand( std::vector<Player*> playersInHand )
 
   std::cout << "nrPlayers " << playersInHand.size() << "\n";
   
-  unsigned int dealerPosition = 0;
-    
   int nrPlayers = playersInHand.size();
   if( nrPlayers < 2 ) {
     std::cout << "Two few players!\n";
@@ -143,14 +123,19 @@ void Table::runHand( std::vector<Player*> playersInHand )
     playerToAct = getPlayerAfter(bigBlind, currentPot->players);
     lastInRound = playerToAct;
 
+    Action actionToMatch{CHECK,0};
+
     if( getNumCards() == 0 ) { //preflopp
-      bets[smallBlind->getTablePosition()] = 50; //Blind
-      bets[bigBlind->getTablePosition()] = 100; //blind
-      smallBlind->reduceStackSize( 50 ); //reduce stack size
-      bigBlind->reduceStackSize( 100 ); //reduce stack size
+      unsigned int sb = (smallBlind->getStackSize() < 50) ? smallBlind->getStackSize():50;
+      unsigned int bb = (bigBlind->getStackSize() < 50) ? bigBlind->getStackSize():100;
+      bets[smallBlind->getTablePosition()] = sb; //Blind
+      bets[bigBlind->getTablePosition()] = bb; //blind
+      smallBlind->reduceStackSize( sb ); //reduce stack size
+      bigBlind->reduceStackSize( bb ); //reduce stack size
+      actionToMatch.action = BET;
+      actionToMatch.amount = bb;
     }
 
-    Action actionToMatch{CHECK,0};
       
     do {
 
@@ -256,7 +241,7 @@ void Table::runHand( std::vector<Player*> playersInHand )
       
 	pots.push(sidePot);
 	currentPot = sidePot;
-      } else {
+      } else { //all players has given the same amount.
 	for( int bet : bets ) {
 	  currentPot->size += bet;
 	}
@@ -274,8 +259,10 @@ void Table::runHand( std::vector<Player*> playersInHand )
 
 	Player *p = currentPot->players[0];
 	std::cout << "Player " << p->getTablePosition() << " won: " << currentPot->size <<  " with: ";
-	printCard(p->getFirstCard());
-	printCard(p->getSecondCard());
+	if( currentPot->players.size() != 1 ) {
+	  printCard(p->getFirstCard());
+	  printCard(p->getSecondCard());
+	}
 	std::cout << "\n";
 	p->increaseStackSize(currentPot->size);
 	
@@ -288,6 +275,7 @@ void Table::runHand( std::vector<Player*> playersInHand )
     switch( numCardsOnTable ) {
 
     case 0:	 //pre-flop
+      log.push_back("\nFlop\n");
       addCardToBoard(deck.getNextCard());
       addCardToBoard(deck.getNextCard());
       addCardToBoard(deck.getNextCard());
@@ -331,6 +319,7 @@ void Table::runTable()
 
     runHand( playersInHand );
     
+    dealerPosition = (dealerPosition >= 6) ? 0:dealerPosition+1;
     board.clear();
     deck.resetDeck();
     std::this_thread::sleep_for( std::chrono::milliseconds{7000} );
@@ -353,12 +342,15 @@ bool Table::registerUser( User *user, unsigned int tablePosition )
     if( p.getTablePosition() == tablePosition ) return false;
   }
 
+
   Player newPlayer( user, 15000, tablePosition );
   players.push_back(newPlayer);
 
   std::sort( begin(players), end(players), [](Player p1, Player p2) {
       return p1.getTablePosition() < p2.getTablePosition();
     });
+
+  if( newPlayer.getUser() != nullptr) std::cout << newPlayer.getUser()->getSocket() << "\n";
 
   return true;
 }
@@ -450,10 +442,25 @@ std::vector<Player*> Table::findWinners( std::vector<Player*> &players )
   return currentBest;
 }
 
+void Table::sendToAllPlayers(std::string line)
+{
+  for( Player &p : players ) {
+    if( p.getUser() != nullptr ) {
+      int sock = p.getUser()->getSocket();
+
+      if( sock > 0 ) {
+	send(sock,line.c_str(),line.size(),0);
+      }
+    }
+  }
+
+}
+
 void Table::draw( unsigned int potSize)
 {
 
   std::cout << "\033[2J \033[2;0f";
+  sendToAllPlayers("\033[2J \033[2;0f");
   for( int i = 0; i < MAX_NR_PLAYERS; ++i ) {
     
     Player *p = getPlayerAtPosition(i);
@@ -461,33 +468,54 @@ void Table::draw( unsigned int potSize)
 
       switch(i) {
       case 0: std::cout << "\033[2;10f Player 0\n\033[12C" << p->getStackSize();
+	sendToAllPlayers("\033[2;10f Player 0\n\033[12C");
 	break;
       case 1: std::cout << "\033[2;23f Player 1\n\033[25C" << p->getStackSize();
+	sendToAllPlayers("\033[2;23f Player 1\n\033[25C");
 	break;
       case 2: std::cout << "\033[2;40f Player 2\n\033[42C" << p->getStackSize();
+	sendToAllPlayers("\033[2;40f Player 2\n\033[42C");
 	break;
       case 3: std::cout << "\033[7;45f Player 3\n\033[47C" << p->getStackSize();
+	sendToAllPlayers("\033[7;45f Player 3\n\033[47C");
 	break;
       case 4: std::cout << "\033[12;40f Player 4\n\033[42C" << p->getStackSize();
+	sendToAllPlayers("\033[12;40f Player 4\n\033[42C");
 	break;
       case 5: std::cout << "\033[12;23f Player 5\n\033[25C" << p->getStackSize();
+	sendToAllPlayers("\033[12;23f Player 5\n\033[25C");
 	break;
       case 6: std::cout << "\033[12;10f Player 6\n\033[12C" << p->getStackSize();
+	sendToAllPlayers("\033[12;10f Player 6\n\033[12C");
 	break;
       case 7: std::cout << "\033[7;0f Player 7\n\033[2C" << p->getStackSize();
+	sendToAllPlayers("\033[7;0f Player 7\n\033[2C");
 	break;
       }
+      std::cout << "\033[1B \033[10DCards:";
+      sendToAllPlayers("\033[1B \033[5DCards:");
+      //      sendToAllPlayers(cardToString(p->getFirstCard()) + cardToString(p->getSecondCard()));
+      p->drawCards();
+      for( Player &opponent : players ) {
+	if( &opponent != p && opponent.getUser() != nullptr && opponent.getUser()->getSocket() != -1 ) {
+	  send(opponent.getUser()->getSocket(), "**", 2, 0);
+	}
+      }
     }
-    std::cout << "\033[1B \033[10DCards:";
-    p->drawCards();
   }
 
   std::cout << "\033[8;20f";
+  sendToAllPlayers("\033[8;20f");
   std::vector<Card> cardsOnTheTable = getCardsOnBoard();
   for_each( begin(cardsOnTheTable), end(cardsOnTheTable), printCard );
+  std::string board;
+  for_each( begin(cardsOnTheTable), end(cardsOnTheTable), [&board](Card &c){ board += cardToString(c);} );
+  sendToAllPlayers(board);
 
   std::cout << "\033[7;18fPot: " << potSize;
+  sendToAllPlayers("\033[7;18fPot: " + std::to_string(potSize));
 
   std::cout << "\033[18;0f";
+  sendToAllPlayers("\033[18;0f");
   
 }

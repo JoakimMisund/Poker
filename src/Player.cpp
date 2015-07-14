@@ -1,8 +1,16 @@
 #include "../include/Player.h"
 #include <algorithm>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include "../include/Utils.h"
+
 
 Player::Player():stackSize(0),user(nullptr),tablePosition(-1),state{ACTIVE} {}
-Player::Player(User *user, unsigned int stackSize, unsigned int tablePosition ):stackSize{stackSize},user{user},tablePosition{tablePosition},state{ACTIVE}{}
+Player::Player(User *u, unsigned int stackSize, unsigned int tablePosition ):stackSize{stackSize},user{u},tablePosition{tablePosition},state{ACTIVE}
+{
+user = u;
+if( user != nullptr ) std::cout << "Scoekt: " << user->getSocket() << "\n";
+}
 unsigned int Player::getStackSize() { return stackSize; }
 unsigned int Player::reduceStackSize( int amount ) { return stackSize -= amount; }
 unsigned int Player::increaseStackSize( int amount ) { return stackSize += amount; }
@@ -91,6 +99,19 @@ Action Player::promptForAction( Action &actionToMatch )
     
   } else { //Remote party send request.
 
+    int sock = user->getSocket();
+    char buf[100] = "Choose action:";
+    send( sock, buf, 14, 0);
+    
+    char resp[100] = {0};
+    recv(sock, resp, 100, 0);
+    
+    playerAction.action = ActionType::CALL;
+    
+    std::cout << resp;
+    
+    exit(-1);
+
   }
   return playerAction;
 }
@@ -110,8 +131,14 @@ PlayerState Player::getState() { return state; }
 
 void Player::drawCards()
 {
-  if( user != nullptr ) {
-    printCard(getFirstCard());
-    printCard(getSecondCard());
-  }
+
+
+   if( user == nullptr ) {
+     printCard(getFirstCard());
+     printCard(getSecondCard());
+   } else {
+     int sock = user->getSocket();
+     std::string cards = cardToString(getFirstCard()) + cardToString(getSecondCard());
+     send(sock, cards.c_str(), cards.length(), 0);
+   }
 }

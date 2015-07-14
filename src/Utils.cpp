@@ -7,6 +7,8 @@ int compareHands( std::vector<Card> hand1, std::vector<Card> hand2 )
   handStrength h1 = getHandStrength( hand1, h1t1, h1t2 );
   handStrength h2 = getHandStrength( hand2, h2t1, h2t2 );
 
+  if(h1 == h2 && h1t1 == h2t1 && h1t2 == h2t2 ) return 0;
+
   if( h1 != h2 ) {
     return (h1 > h2) ? 1:-1;
   }
@@ -15,6 +17,8 @@ int compareHands( std::vector<Card> hand1, std::vector<Card> hand2 )
   if( h1t1 != h2t1 ) {
     return (h1t1 > h2t1) ? 1:-1;
   }
+  if( h1 == STRAIGHT || h1 == STRAIGHT_FLUSH ) return 0;
+
   if( h1t2 != h2t2 ) {
     return (h1t2 > h2t2) ? 1:-1;
   }

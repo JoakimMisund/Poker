@@ -75,9 +75,25 @@ static const std::string type_translated_to_shorthand[] = {"2","3","4","5","6","
 
 std::string cardToString( const Card &c )
 {
-  std::string type{type_translated_to_text[static_cast<int>(c.type)]};
-  std::string suit{suit_translated_to_text[static_cast<int>(c.suit)]};
-  return type + " of " + suit;;
+  Type t = c.type;
+  Suit s = c.suit;
+
+  std::string card;
+  
+  card =  type_translated_to_shorthand[static_cast<int>(t)];
+  
+  switch(s) {
+  case Suit::HEART: card +=  "\033[0;31m\u2665\033[0;0m";
+    break;
+  case Suit::CLUB: card += "\033[0;30m\u2663\033[0;0m";
+    break;
+  case Suit::DIAMOND: card += "\033[0;31m\u2666\033[0;0m";
+    break;
+  case Suit::SPADE: card += "\033[0;30m\u2660\033[0;0m";
+    break;
+  }
+
+  return card;
 }
 
 void printCard( const Card &c )
