@@ -3,20 +3,38 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include "../include/Utils.h"
+#include <arpa/inet.h>
+#include <thread>
+#include <stack>
+#include <chrono>
+
 
 
 Player::Player():stackSize(0),user(nullptr),tablePosition(-1),state{ACTIVE} {}
 Player::Player(User *u, unsigned int stackSize, unsigned int tablePosition ):stackSize{stackSize},user{u},tablePosition{tablePosition},state{ACTIVE}
 {
-user = u;
-if( user != nullptr ) std::cout << "Scoekt: " << user->getSocket() << "\n";
+  user = u;
+  if( user != nullptr ) std::cout << "Scoekt: " << user->getSocket() << "\n";
 }
 unsigned int Player::getStackSize() { return stackSize; }
 unsigned int Player::reduceStackSize( int amount ) { return stackSize -= amount; }
 unsigned int Player::increaseStackSize( int amount ) { return stackSize += amount; }
 unsigned int Player::getTablePosition() { return tablePosition; }
 
-Action Player::promptForAction( Action &actionToMatch )
+
+int getInt( int socket, int &buffer )
+{
+  std::cout << "getint\n";
+  char buf[50] = { 0 };
+  getInput( socket, buf );
+
+  std::string s(buf);
+  std::size_t t;
+  buffer = std::stoi(s, &t);
+  return buffer;
+}
+
+Action Player::promptForAction( Action &actionToMatch, unsigned int outstandingBet )
 {
   Action playerAction{ActionType::FOLD,0};
   ActionType toMatch = actionToMatch.action;
@@ -38,7 +56,7 @@ Action Player::promptForAction( Action &actionToMatch )
       } else {
 	  playerAction.amount = 100;
       }
-    } else if( getStackSize() >= amount) {
+    } else if( getStackSize()+outstandingBet >= amount) {
  
       if( amount > 500 ) {
 	playerAction.action = ActionType::FOLD;
@@ -51,68 +69,62 @@ Action Player::promptForAction( Action &actionToMatch )
       playerAction.amount =  std::min( getStackSize(), amount );
     }
     
-  } else if( user->getSocket() == -1 ) { //local user
+  } else { //local user
+    
+    int sock = user->getSocket();
 
+    std::string action_str;
     char action = 0;
     while( action == 0 ) {
-      if( static_cast<unsigned int>(actionToMatch.amount) >= getStackSize() ) {
-	std::cout << "What action do you want to take?(c: call, f:fold) :";
+      if( static_cast<unsigned int>(actionToMatch.amount) >= getStackSize()+outstandingBet ) {
+	action_str = "What action do you want to take?(c: call, f:fold) :";
       } else if( toMatch == ActionType::FOLD ) {
-	std::cout << "What action do you want to take?(b: bet, f:fold, s: check) :";
+	action_str = "What action do you want to take?(b: bet, f:fold, s: check) :";
       } else if( toMatch == ActionType::BET ) {
-	std::cout << "What action do you want to take?(f:fold, c: call, r: raise) :";
+	action_str = "What action do you want to take?(f:fold, c: call, r: raise) :";
       } else if( toMatch == ActionType::RAISE ) {
-	std::cout << "What action do you want to take?(f:fold, c: call, r: raise) :";
+	action_str = "What action do you want to take?(f:fold, c: call, r: raise) :";
       } else if( toMatch == ActionType::CHECK ) {
-	std::cout << "What action do you want to take?(b: bet, f:fold, s: check) :";
+	action_str = "What action do you want to take?(b: bet, f:fold, s: check) :";
       }
 
+      displayString(action_str, sock);
 
-      std::cin >> action;
+      getInput( sock, action );
+      char flush[100];
+      getInput( sock, flush );
 
       switch( action ) {
       case 'b':
         playerAction.action = ActionType::BET;
-	std::cout << "How much?:";
-	std::cin >> playerAction.amount;
+	displayString( "How much?:", sock );
+	getInt(sock, playerAction.amount);
+	if( playerAction.amount > getStackSize()+outstandingBet ) { displayString( "You dont have that much!\n", sock ); action = 0; };
 	break;
       case 'f':
         playerAction.action = ActionType::FOLD;
 	break;
       case 'c':
         playerAction.action = ActionType::CALL;
-	playerAction.amount = (getStackSize() >= static_cast<unsigned int>(actionToMatch.amount)) ? actionToMatch.amount:getStackSize();
+	playerAction.amount = (getStackSize()+outstandingBet >= static_cast<unsigned int>(actionToMatch.amount)) ?
+	  actionToMatch.amount:getStackSize()+outstandingBet;
 	break;
       case 'r':
         playerAction.action = ActionType::RAISE;
-	std::cout << "How much?:";
-	std::cin >> playerAction.amount;
+	displayString( "How much?:", sock );
+	getInt(sock, playerAction.amount);
+	if( playerAction.amount > getStackSize()+outstandingBet ) { displayString( "You dont have that much!\n", sock ); action = 0; };
 	break;
       case 's':
         playerAction.action = ActionType::CHECK;
 	break;
       default:
-        std::cout << "Invalid action! try again..\n";
+        displayString( "Invalid action! try again..\n", sock );
 	action = 0;
       }
     }
-    
-  } else { //Remote party send request.
+  } 
 
-    int sock = user->getSocket();
-    char buf[100] = "Choose action:";
-    send( sock, buf, 14, 0);
-    
-    char resp[100] = {0};
-    recv(sock, resp, 100, 0);
-    
-    playerAction.action = ActionType::CALL;
-    
-    std::cout << resp;
-    
-    exit(-1);
-
-  }
   return playerAction;
 }
 

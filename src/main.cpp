@@ -17,6 +17,7 @@
 #include <chrono>
 #include <thread>
 #include <atomic>
+#include <map>
 
 using namespace std::chrono;
 
@@ -108,6 +109,7 @@ int main( int argc, char *argv[] )
   test_findBestCombination();
   test_getHandStrength();
 #endif
+
   //construct tables
 
   if( argc < 2 ) {
@@ -140,10 +142,11 @@ int main( int argc, char *argv[] )
 
   std::atomic<bool> done{false};
   std::thread *f = nullptr;
+  std::map<int, std::thread*> thdrs;
 
   while(1) {
     
-    nfds = epoll_wait( epollfd, events, 10, duration_cast<milliseconds>(seconds(100)).count() );
+    nfds = epoll_wait( epollfd, events, 10, duration_cast<milliseconds>(seconds(2)).count() );
     if( nfds == -1 ) {
       std::cerr << "epoll_wait\n";
       return -1;
@@ -208,6 +211,22 @@ void test_getHandStrength()
   CardDeck deck(time(NULL));
   std::string strengths[]{"high card","pair","two pairs", "three of a kind", "straight", "flush", "full house", "four of a kind", "straight flush" };
 
+  //int compareHands( std::vector<Card> hand1, std::vector<Card> hand2 )
+  Card c1{DIAMOND, ACE};
+  Card c2{HEART, ACE};
+  Card c3{CLUB, QUEEN};
+  Card c4{SPADE, QUEEN};
+  Card c5{DIAMOND, EIGHT};
+  std::vector<Card> h1{c1,c2,c3,c4,c5};
+  c5.type = TEN;
+  std::vector<Card> h2{c1,c2,c3,c4,c5};
+
+  std::cout << "Test: " << compareHands( h1, h2 ) << "\n";
+  return;
+  
+    //a a q q 8 vs a a q q 10
+    //7 7 k kn 5 vs 7 7 6 5 8
+
   //handStrength getHandStrength( std::vector<Card> &hand, Type &t1, Type &t2 )
   std::vector<Card> hand;
   
@@ -236,6 +255,8 @@ void test_findBestCombination()
 
   CardDeck deck(time(NULL));
   std::vector<Card> possibleCards;
+  
+
  
 
   for( int i = 0; i < 7; ++i ) { //add 7 cards

@@ -7,21 +7,22 @@ int compareHands( std::vector<Card> hand1, std::vector<Card> hand2 )
   handStrength h1 = getHandStrength( hand1, h1t1, h1t2 );
   handStrength h2 = getHandStrength( hand2, h2t1, h2t2 );
 
-  if(h1 == h2 && h1t1 == h2t1 && h1t2 == h2t2 ) return 0;
 
   if( h1 != h2 ) {
     return (h1 > h2) ? 1:-1;
   }
-  
 
-  if( h1t1 != h2t1 ) {
-    return (h1t1 > h2t1) ? 1:-1;
-  }
-  if( h1 == STRAIGHT || h1 == STRAIGHT_FLUSH ) return 0;
+  if( h1 != HIGH_CARD ) {
+    if( h1t1 != h2t1 ) {
+      return (h1t1 > h2t1) ? 1:-1;
+    }
+    if( h1 == STRAIGHT || h1 == STRAIGHT_FLUSH ) return 0;
 
-  if( h1t2 != h2t2 ) {
-    return (h1t2 > h2t2) ? 1:-1;
+    if( h1 != PAIR && h1t2 != h2t2 ) {
+      return (h1t2 > h2t2) ? 1:-1;
+    }
   }
+
 
   //Highest card desides.
   std::sort( begin(hand1), end(hand1), []( Card c1, Card c2 ) {
@@ -185,4 +186,14 @@ handStrength getHandStrength( std::vector<Card> hand, Type &t1, Type &t2 )
 
   std::cout << "Should never be here!!!!\n";
   return HIGH_CARD;
+}
+
+void displayString( std::string s, int sock )
+{
+  
+  if( sock == -1 ) {
+    std::cout << s;
+  } else {
+    send(sock,s.c_str(),s.length(),0);
+  }
 }
