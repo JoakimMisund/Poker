@@ -6,6 +6,7 @@
 #include "../include/User.h"
 
 
+
 enum ActionType { FOLD, BET, CALL, RAISE, CHECK };
 struct Action {
   ActionType action;
@@ -23,8 +24,9 @@ class Player { //One instance of a user at a table.
   unsigned int reduceStackSize( int amount );
   unsigned int increaseStackSize( int amount );
   unsigned int getTablePosition();
+  
 
-  Action promptForAction( Action &actionToMatch );
+  Action promptForAction( Action &actionToMatch, unsigned int outstandingBet );
 
   void setFirstCard( Card c );
   void setSecondCard( Card c );
@@ -35,6 +37,7 @@ class Player { //One instance of a user at a table.
   void setPlayerState( PlayerState state );
   void drawCards();
   bool folded;
+  User* getUser(){return user;}
 
  private:
   unsigned int stackSize;

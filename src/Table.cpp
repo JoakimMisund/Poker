@@ -31,6 +31,7 @@ std::vector<Player*> Table::getPlayers()
 }
 
 
+
 std::vector<Player*> getPlayingPlayers( std::vector<Player*> &players )
 {
   std::vector<Player*> activePlayers (players.size());
@@ -294,6 +295,7 @@ void Table::runTable()
 {
   while( 1 ) {
 
+    int dealerPosition = 0;
     while( players.size() < 2 ) {
       std::cerr << "Two few players at the table -> Waiting..\n";
       std::this_thread::sleep_for(std::chrono::milliseconds{2000});
@@ -306,6 +308,7 @@ void Table::runTable()
     runHand( playersInHand );
     
     Player *p = nullptr;
+
     do {
       dealerPosition++;
       if(dealerPosition >= MAX_NR_PLAYERS) dealerPosition = 0;    

@@ -1,8 +1,8 @@
 #include "../include/Player.h"
+#include "../include/Utils.h"
 #include <algorithm>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include "../include/Utils.h"
 #include <arpa/inet.h>
 #include <thread>
 #include <stack>
@@ -21,6 +21,13 @@ unsigned int Player::reduceStackSize( int amount ) { return stackSize -= amount;
 unsigned int Player::increaseStackSize( int amount ) { return stackSize += amount; }
 unsigned int Player::getTablePosition() { return tablePosition; }
 
+
+void getInput(int socket, char* buffer)
+{
+  
+  recv(socket, buffer, 1000, 0);
+
+}
 
 int getInt( int socket, int &buffer )
 {
@@ -90,7 +97,7 @@ Action Player::promptForAction( Action &actionToMatch, unsigned int outstandingB
 
       displayString(action_str, sock);
 
-      getInput( sock, action );
+      getInput( sock, &action );
       char flush[100];
       getInput( sock, flush );
 

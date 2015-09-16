@@ -37,6 +37,8 @@ public:
   void runTable();
   void runHand( std::vector<Player*> playersInHand );
 
+  void sendToAllPlayers(std::string msg);
+
 private:
   std::vector<Player> players;
   std::vector<Card> board;
@@ -45,6 +47,7 @@ private:
   unsigned int smallBlind;
   unsigned int bigBlind;
   CardDeck deck;
+  unsigned int dealerPosition;
 };
 
 #endif

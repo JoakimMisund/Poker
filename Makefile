@@ -1,6 +1,6 @@
 CC = g++
 CFLAGS = -g -c -Wall -std=c++1y -pedantic
-LDFLAGS = -lm -std=c++1y -pedantic
+LDFLAGS = -lm -std=c++1y -pedantic -pthread
 
 SRCDIR = src
 

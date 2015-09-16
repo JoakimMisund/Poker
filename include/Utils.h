@@ -18,5 +18,6 @@ handStrength getHandStrength( std::vector<Card> hand, Type &t1, Type &t2 );
 
 int compareHands( std::vector<Card> hand1, std::vector<Card> hand2 );
 
+void displayString( std::string s, int sock );
 
 #endif
