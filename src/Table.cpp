@@ -93,7 +93,7 @@ void Table::runHand( std::vector<Player*> playersInHand )
 
   int nrPlayers = playersInHand.size();
   if( nrPlayers < 2 ) {
-    std::cout << "Two few players!\n";
+    std::cout << "Too few players!\n";
     return;
   }
     
@@ -112,11 +112,12 @@ void Table::runHand( std::vector<Player*> playersInHand )
   std::shared_ptr<Pot> currentPot = startPot;
 
   std::vector<std::string> log;
-  
+
+  log.push_back("*****Pre flop*****\n");  
+
   while( 1 ) {
 
     draw(currentPot->size);
-    std::for_each( begin(log), end(log), [](std::string s) {std::cout << s << "\n";});
     for( std::string s : log ) sendToAllPlayers(s + "\n");
 
     std::array<int,8> bets {0,0,0,0,0,0,0,0}; //bets of players
@@ -139,14 +140,15 @@ void Table::runHand( std::vector<Player*> playersInHand )
       actionToMatch.action = BET;
       actionToMatch.amount = bb;
       
-      sendToAllPlayers("Smallblind (player " + std::to_string(smallBlind->getTablePosition()) + ") : " + std::to_string(sb) +
+      log.push_back("Smallblind (player " + std::to_string(smallBlind->getTablePosition()) + ") : " + std::to_string(sb) +
 		       "\nBigblind (player " + std::to_string(bigBlind->getTablePosition()) + ") : " + std::to_string(bb) + "\n");
     }
-
+    
       
     do {
       
       draw(currentPot->size);
+      for( std::string s : log ) sendToAllPlayers(s + "\n");
 
       if( playerToAct->getStackSize() == 0 ) continue;
       unsigned int tablePosition = playerToAct->getTablePosition();
@@ -198,7 +200,6 @@ void Table::runHand( std::vector<Player*> playersInHand )
       
       playerToAct = getPlayerAfter( playerToAct, currentPot->players );
       draw(currentPot->size);
-      std::for_each( begin(log), end(log), [](std::string s) {std::cout << s << "\n";});
       for( std::string s : log ) sendToAllPlayers(s + "\n");
       
       std::this_thread::sleep_for( std::chrono::milliseconds{1000} );
@@ -260,12 +261,17 @@ void Table::runHand( std::vector<Player*> playersInHand )
     switch( numCardsOnTable ) {
 
     case 0:	 //pre-flop
+      log.push_back("\n*****Flop*****");
       addCardToBoard(deck.getNextCard());
       addCardToBoard(deck.getNextCard());
       addCardToBoard(deck.getNextCard());
       break;
     case 3:
+      log.push_back("\n*****Turn*****");
+      addCardToBoard(deck.getNextCard());
+      break;
     case 4:
+      log.push_back("\n*****River*****");
       addCardToBoard(deck.getNextCard());
       break;
     case 5: //end
@@ -295,10 +301,13 @@ void Table::runTable()
 {
   while( 1 ) {
 
-    int dealerPosition = 0;
+    int itrs_waited = 0;
     while( players.size() < 2 ) {
       std::cerr << "Two few players at the table -> Waiting..\n";
       std::this_thread::sleep_for(std::chrono::milliseconds{2000});
+      
+      if( itrs_waited++ > 10 )
+        break;
     }
 
     std::vector<Player*> players_ptrs(0);
@@ -311,7 +320,9 @@ void Table::runTable()
 
     do {
       dealerPosition++;
-      if(dealerPosition >= MAX_NR_PLAYERS) dealerPosition = 0;    
+      printf("Dealerpos: %d\n", dealerPosition);
+      if(dealerPosition >= players.size()) 
+        dealerPosition = 0;    
       p = getPlayerAtPosition(dealerPosition);
     } while( p == nullptr );
 
@@ -458,7 +469,6 @@ void Table::sendToAllPlayers(std::string line)
 void Table::draw( unsigned int potSize)
 {
 
-  std::cout << "\033[2J \033[2;0f";
   sendToAllPlayers("\033[2J \033[2;0f");
   for( int i = 0; i < MAX_NR_PLAYERS; ++i ) {
     
@@ -466,32 +476,31 @@ void Table::draw( unsigned int potSize)
     if( p != nullptr ) {
 
       switch(i) {
-      case 0: std::cout << "\033[2;10f Player 0\n\033[12C" << p->getStackSize();
+      case 0:
 	sendToAllPlayers("\033[2;10f Player 0\n\033[12C"+ std::to_string( p->getStackSize()));
 	break;
-      case 1: std::cout << "\033[2;23f Player 1\n\033[25C" << p->getStackSize();
+      case 1:
 	sendToAllPlayers("\033[2;23f Player 1\n\033[25C"+ std::to_string( p->getStackSize()));
 	break;
-      case 2: std::cout << "\033[2;40f Player 2\n\033[42C" << p->getStackSize();
+      case 2:
 	sendToAllPlayers("\033[2;40f Player 2\n\033[42C"+ std::to_string( p->getStackSize()));
 	break;
-      case 3: std::cout << "\033[7;45f Player 3\n\033[47C" << p->getStackSize();
+      case 3:
 	sendToAllPlayers("\033[7;45f Player 3\n\033[47C"+ std::to_string( p->getStackSize()));
 	break;
-      case 4: std::cout << "\033[12;40f Player 4\n\033[42C" << p->getStackSize();
+      case 4:
 	sendToAllPlayers("\033[12;40f Player 4\n\033[42C"+ std::to_string( p->getStackSize()));
 	break;
-      case 5: std::cout << "\033[12;23f Player 5\n\033[25C" << p->getStackSize();
+      case 5:
 	sendToAllPlayers("\033[12;23f Player 5\n\033[25C"+ std::to_string( p->getStackSize()));
 	break;
-      case 6: std::cout << "\033[12;10f Player 6\n\033[12C" << p->getStackSize();
+      case 6:
 	sendToAllPlayers("\033[12;10f Player 6\n\033[12C" + std::to_string( p->getStackSize()));
 	break;
-      case 7: std::cout << "\033[7;0f Player 7\n\033[2C" << p->getStackSize();
+      case 7:
 	sendToAllPlayers("\033[7;0f Player 7\n\033[2C"+ std::to_string( p->getStackSize()));
 	break;
       }
-      std::cout << "\033[1B \033[10DCards:";
       sendToAllPlayers("\033[1B \033[5DCards:");
       //      sendToAllPlayers(cardToString(p->getFirstCard()) + cardToString(p->getSecondCard()));
       p->drawCards();
@@ -503,7 +512,6 @@ void Table::draw( unsigned int potSize)
     }
   }
 
-  std::cout << "\033[8;20f";
   sendToAllPlayers("\033[8;20f");
   std::vector<Card> cardsOnTheTable = getCardsOnBoard();
   for_each( begin(cardsOnTheTable), end(cardsOnTheTable), printCard );
@@ -511,10 +519,8 @@ void Table::draw( unsigned int potSize)
   for_each( begin(cardsOnTheTable), end(cardsOnTheTable), [&board](Card &c){ board += cardToString(c);} );
   sendToAllPlayers(board);
 
-  std::cout << "\033[7;18fPot: " << potSize;
   sendToAllPlayers("\033[7;18fPot: " + std::to_string(potSize));
 
-  std::cout << "\033[18;0f";
   sendToAllPlayers("\033[18;0f");
   
 }

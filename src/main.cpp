@@ -89,7 +89,6 @@ void runThread( int conn_sock )
     }
   
     nrOpponents = resp[0]-'0';
-    std::cout << nrOpponents << "\n";
   }
 
   

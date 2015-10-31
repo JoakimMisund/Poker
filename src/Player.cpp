@@ -98,8 +98,9 @@ Action Player::promptForAction( Action &actionToMatch, unsigned int outstandingB
       displayString(action_str, sock);
 
       getInput( sock, &action );
-      char flush[100];
-      getInput( sock, flush );
+      fprintf(stderr, "Received: %d %c", action, action);
+      //char flush[100];
+      //getInput( sock, flush );
 
       switch( action ) {
       case 'b':
@@ -121,6 +122,7 @@ Action Player::promptForAction( Action &actionToMatch, unsigned int outstandingB
 	displayString( "How much?:", sock );
 	getInt(sock, playerAction.amount);
 	if( playerAction.amount > getStackSize()+outstandingBet ) { displayString( "You dont have that much!\n", sock ); action = 0; };
+        if( playerAction.amount <= actionToMatch.amount ) { displayString("You have to raise to a amount higher than the current bet!\n", sock); action = 0;};
 	break;
       case 's':
         playerAction.action = ActionType::CHECK;
@@ -153,8 +155,8 @@ void Player::drawCards()
 
 
    if( user == nullptr ) {
-     printCard(getFirstCard());
-     printCard(getSecondCard());
+     //     printCard(getFirstCard());
+     //printCard(getSecondCard());
    } else {
      int sock = user->getSocket();
      std::string cards = cardToString(getFirstCard()) + cardToString(getSecondCard());
