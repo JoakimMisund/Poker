@@ -9,6 +9,7 @@
 #include <chrono>
 #include <sys/epoll.h>
 #include <atomic>
+#include <unistd.h>
 
 
 
@@ -27,10 +28,12 @@ unsigned int Player::getTablePosition() { return tablePosition; }
 int wait_for_input(int sock) {
   struct epoll_event ev, events[10];
   int nfds, epollfd;
+  int ret1;
 
   if( (epollfd = epoll_create(10)) == -1 ) {
     std::cerr << "Could not create epoll\n";
-    exit(-1);
+    ret1  = 100;
+    pthread_exit(&ret1);
   }
       
   ev.events = EPOLLIN;
@@ -38,13 +41,15 @@ int wait_for_input(int sock) {
 
   if( epoll_ctl(epollfd, EPOLL_CTL_ADD, sock, &ev ) == -1 ) {
     std::cerr << "epoll_ctl: socket\n";
-    exit(-1);
+    ret1  = 100;
+    pthread_exit(&ret1);
   }
       
-  nfds = epoll_wait( epollfd, events, 10, std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::seconds(10)).count() );
+  nfds = epoll_wait( epollfd, events, 10, std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::seconds(20)).count() );
   if( nfds == -1 ) {
     std::cerr << "epoll_wait\n";
-    exit(-1);
+    ret1  = 100;
+    pthread_exit(&ret1);
   } else if( nfds == 0 ) {
     std::cout << "User did not provide any input!";
     return -1;
@@ -55,11 +60,14 @@ int wait_for_input(int sock) {
 
 void getInput(int socket, char* buffer)
 {
+  int ret1;
   if( wait_for_input(socket) != -1 ) 
-    recv(socket, buffer, 1000, 0);
+    recv(socket, buffer, 1, 0);
   else {
     printf("Client has not responded!");
-    exit(-1);
+    displayString("Cloasing connection because of lack of response", socket);
+    ret1  = 100;
+    pthread_exit(&ret1);
   }
 
 }
@@ -135,13 +143,15 @@ Action Player::promptForAction( Action &actionToMatch, unsigned int outstandingB
       }
 
       displayString(action_str, sock);
-
+      std::cout << "before recv\n";
       recv(sock, flush, 1000, 0);
-
+      std::cout << "before get inp\n";
       getInput( sock, &action ); 
-      
+      std::cout << "before recv\n";
       recv(sock, flush, 1000, 0);
-      
+      int ret1  = 100;
+
+      std::cout << "before switch\n";
 
       switch( action ) {
       case 'b':
@@ -168,6 +178,11 @@ Action Player::promptForAction( Action &actionToMatch, unsigned int outstandingB
       case 's':
         playerAction.action = ActionType::CHECK;
 	break;
+      case 'q':
+        std::cout << "Quit\n";
+        close(sock);
+        pthread_exit(&ret1);
+        
       default:
         displayString( "Invalid action! try again..\n", sock );
 	action = 0;
