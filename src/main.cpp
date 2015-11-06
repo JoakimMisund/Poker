@@ -18,6 +18,7 @@
 #include <thread>
 #include <atomic>
 #include <map>
+#include <fcntl.h>
 
 using namespace std::chrono;
 
@@ -86,6 +87,11 @@ void runThread( int conn_sock )
       std::cerr << "Client has exited\n";
       close(conn_sock);
       return;
+    }
+
+    if(fcntl(conn_sock, F_SETFL, O_NONBLOCK) <= 0) { //Allows me to performe non-blocking reads
+      printf( "Something went wrong in the call to fcntl!" );
+      printf(strerror(errno));
     }
   
     nrOpponents = resp[0]-'0';

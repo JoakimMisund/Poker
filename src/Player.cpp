@@ -7,6 +7,8 @@
 #include <thread>
 #include <stack>
 #include <chrono>
+#include <sys/epoll.h>
+#include <atomic>
 
 
 
@@ -22,10 +24,43 @@ unsigned int Player::increaseStackSize( int amount ) { return stackSize += amoun
 unsigned int Player::getTablePosition() { return tablePosition; }
 
 
+int wait_for_input(int sock) {
+  struct epoll_event ev, events[10];
+  int nfds, epollfd;
+
+  if( (epollfd = epoll_create(10)) == -1 ) {
+    std::cerr << "Could not create epoll\n";
+    exit(-1);
+  }
+      
+  ev.events = EPOLLIN;
+  ev.data.fd = sock;
+
+  if( epoll_ctl(epollfd, EPOLL_CTL_ADD, sock, &ev ) == -1 ) {
+    std::cerr << "epoll_ctl: socket\n";
+    exit(-1);
+  }
+      
+  nfds = epoll_wait( epollfd, events, 10, std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::seconds(10)).count() );
+  if( nfds == -1 ) {
+    std::cerr << "epoll_wait\n";
+    exit(-1);
+  } else if( nfds == 0 ) {
+    std::cout << "User did not provide any input!";
+    return -1;
+  } else {
+    return 1;
+  }
+}
+
 void getInput(int socket, char* buffer)
 {
-  
-  recv(socket, buffer, 1000, 0);
+  if( wait_for_input(socket) != -1 ) 
+    recv(socket, buffer, 1000, 0);
+  else {
+    printf("Client has not responded!");
+    exit(-1);
+  }
 
 }
 
@@ -83,6 +118,10 @@ Action Player::promptForAction( Action &actionToMatch, unsigned int outstandingB
     std::string action_str;
     char action = 0;
     while( action == 0 ) {
+
+      char flush[100];
+      recv(sock, flush, 1000, 0);
+
       if( static_cast<unsigned int>(actionToMatch.amount) >= getStackSize()+outstandingBet ) {
 	action_str = "What action do you want to take?(c: call, f:fold) :";
       } else if( toMatch == ActionType::FOLD ) {
@@ -97,10 +136,12 @@ Action Player::promptForAction( Action &actionToMatch, unsigned int outstandingB
 
       displayString(action_str, sock);
 
-      getInput( sock, &action );
-      fprintf(stderr, "Received: %d %c", action, action);
-      //char flush[100];
-      //getInput( sock, flush );
+      recv(sock, flush, 1000, 0);
+
+      getInput( sock, &action ); 
+      
+      recv(sock, flush, 1000, 0);
+      
 
       switch( action ) {
       case 'b':
