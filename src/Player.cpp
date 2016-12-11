@@ -74,9 +74,17 @@ void getInput(int socket, char* buffer)
 
 int getInt( int socket, int &buffer )
 {
+  int ret1;
   std::cout << "getint\n";
   char buf[50] = { 0 };
-  getInput( socket, buf );
+  if( wait_for_input(socket) != -1 ) 
+    recv(socket, buf, 14, 0);
+  else {
+    printf("Client has not responded!");
+    displayString("Cloasing connection because of lack of response", socket);
+    ret1  = 100;
+    pthread_exit(&ret1);
+  }
 
   std::string s(buf);
   std::size_t t;
@@ -173,7 +181,11 @@ Action Player::promptForAction( Action &actionToMatch, unsigned int outstandingB
 	displayString( "How much?:", sock );
 	getInt(sock, playerAction.amount);
 	if( playerAction.amount > getStackSize()+outstandingBet ) { displayString( "You dont have that much!\n", sock ); action = 0; };
-        if( playerAction.amount <= actionToMatch.amount ) { displayString("You have to raise to a amount higher than the current bet!\n", sock); action = 0;};
+        if( playerAction.amount <= actionToMatch.amount ) { displayString(std::string("You have to raise to a amount higher than the current bet, Current bet:") +
+									  std::to_string(actionToMatch.amount) +
+									  std::string(", Your bet: ") +
+									  std::to_string(playerAction.amount) +
+									  std::string("\n"), sock); action = 0;};
 	break;
       case 's':
         playerAction.action = ActionType::CHECK;
